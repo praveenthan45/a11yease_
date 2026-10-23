@@ -1,3 +1,8 @@
+## VPS / Node.js hosting
+
+For the fixed production widget, HTTPS setup, persistent storage and migration
+from Render, follow [the VPS deployment guide](deploy/vps/DEPLOY.md).
+
 ## cPanel testing deployment
 
 The payment-free testing release can be packaged with `npm run package:cpanel`.

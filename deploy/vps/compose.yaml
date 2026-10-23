@@ -1,0 +1,60 @@
+name: accessease-vps
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      BIND_HOST: 0.0.0.0
+      COOKIE_SECURE: "true"
+      PUBLIC_ORIGIN: https://${ACCESSEASE_DOMAIN:?Set ACCESSEASE_DOMAIN to your public hostname}
+      ADMIN_CREDENTIAL_FILE: /run/secrets/admin_auth
+      PLATFORM_DATA_DIR: /app/data
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+    volumes:
+      - type: bind
+        source: ${PLATFORM_DATA_PATH:?Set PLATFORM_DATA_PATH to a persistent absolute directory}
+        target: /app/data
+        bind:
+          create_host_path: false
+    secrets:
+      - admin_auth
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+  proxy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ACCESSEASE_DOMAIN: ${ACCESSEASE_DOMAIN:?Set ACCESSEASE_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+secrets:
+  admin_auth:
+    file: ${ADMIN_AUTH_FILE:?Set ADMIN_AUTH_FILE to your existing private admin credential file}
+volumes:
+  caddy_data:
+  caddy_config:
