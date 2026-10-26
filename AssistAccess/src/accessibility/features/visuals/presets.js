@@ -2,7 +2,7 @@
  * Visual presets — starting points, not diagnoses.
  *
  * Each preset is a partial patch: values it does not mention keep their current
- * setting, so "Higher contrast" does not silently reset brightness. Every preset
+ * setting, so "Brighter" does not silently reset saturation. Every preset
  * stays inside the ranges from settingsSchema.js, so no preset can push the page
  * into unreadable territory.
  */
@@ -29,28 +29,10 @@ export const VISUAL_PRESETS = Object.freeze([
     values: { brightness: 85 },
   },
   {
-    id: 'highContrast',
-    label: 'Higher contrast',
-    description: 'Contrast 130%.',
-    values: { contrast: 130 },
-  },
-  {
-    id: 'softContrast',
-    label: 'Softer contrast',
-    description: 'Contrast 85%.',
-    values: { contrast: 85 },
-  },
-  {
     id: 'muted',
     label: 'Muted colours',
     description: 'Saturation 60%.',
     values: { saturation: 60 },
-  },
-  {
-    id: 'grayscale',
-    label: 'Grayscale',
-    description: 'Saturation 0%, so all colour is removed.',
-    values: { saturation: 0 },
   },
 ]);
 
@@ -63,7 +45,11 @@ export function resolvePresetValues(preset) {
  * Which preset (if any) matches the current values.
  * @returns {string} preset id or 'custom'
  */
-export function matchPresetId(values) {
+export function matchPresetId(values, preferredId) {
+  const preferred=VISUAL_PRESETS.find(preset=>preset.id===preferredId);
+  // Presets are partial patches. Selecting Muted after Brighter must keep the
+  // selected indicator without silently resetting the visitor's brightness.
+  if(preferred&&Object.entries(preferred.values).every(([key,value])=>values[key]===value))return preferred.id;
   const found = VISUAL_PRESETS.find((preset) => {
     const resolved = resolvePresetValues(preset);
     return (

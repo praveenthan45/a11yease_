@@ -94,9 +94,9 @@ export const defaultStrings = {
     uninspectableScript: 'Scripts that trigger short animations repeatedly may stay below the detection thresholds.',
   },
   visuals: {
-    heading: 'Brightness, contrast and saturation',
-    enableLabel: 'Apply visual adjustments',
-    enableHint: 'Adjusts the colours of the page content. The toolbar keeps its own colours so its controls stay readable.',
+    heading: 'Brightness mode',
+    enableLabel: 'Brightness mode',
+    enableHint: 'Adjusts brightness, contrast and saturation on your device.',
     presetsLegend: 'Presets',
     presetCustom: 'Custom values',
     presetHint: 'Presets are starting points. Every value can be adjusted with the sliders below and reset at any time.',

@@ -6,7 +6,7 @@ const {JSDOM,VirtualConsole}=require('jsdom');
 
 const widget=fs.readFileSync(path.join(__dirname,'../dist/widget.js'),'utf8');
 
-function setup(getUserMedia,{trackInput=false,devices=[],rejectTrack=false,continuation=null}={}){
+function setup(getUserMedia,{trackInput=false,devices=[],rejectTrack=false,continuation=null,preferences=null}={}){
   const errors=[];
   const console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
   const dom=new JSDOM('<!doctype html><html lang="en"><head></head><body><main><h1>Voice test</h1><button id="save">Save bookmark</button></main></body></html>',{
@@ -28,6 +28,7 @@ function setup(getUserMedia,{trackInput=false,devices=[],rejectTrack=false,conti
   w.scrollBy=options=>pageScroll.push(options.top);
   Object.defineProperty(w.document,'currentScript',{value:{src:'http://localhost:1434/widget.js'}});
   if(continuation)w.sessionStorage.setItem('accessease.voice.navigation.v1',continuation);
+  if(preferences)w.localStorage.setItem('accessease.preferences.v1',JSON.stringify(preferences));
   w.eval(widget);
   const root=w.AccessEase.root;
   root.querySelector('.launcher').click();
@@ -46,6 +47,33 @@ function resultClock(w){
   w.clearTimeout=timer=>timers.delete(timer);
   return {timers,tick(delay){const entry=[...timers].find(([,timer])=>timer.delay===delay);assert.ok(entry,`timer for ${delay}ms exists`);timers.delete(entry[0]);entry[1].callback();}};
 }
+
+test('Navigation keeps the saved Voice Command switch and Resume microphone action searchable and working',async()=>{
+  const t=setup(()=>{},{preferences:{voiceRequested:true}});
+  const voice=t.root.querySelector('[data-setting="voice"]'),wrapper=voice.closest('.voice-setting'),resume=wrapper.querySelector('.voice-resume');
+  try{
+    t.w.eval(fs.readFileSync(path.join(__dirname,'../dist/team-features.js'),'utf8'));
+    for(let i=0;i<50&&!t.w.AccessEaseTeam;i++)await new Promise(resolve=>setTimeout(resolve,20));
+    assert.ok(t.w.AccessEaseTeam);
+    assert.equal(voice.closest('[data-category]').dataset.category,'navigation');
+    assert.equal(wrapper.dataset.teamCard,'voice');
+    assert.equal(t.root.querySelectorAll('[data-setting="voice"]').length,1);
+    assert.equal(resume.hidden,false);assert.equal(t.sessions.length,0,'moving a saved preference never opens the microphone');
+    const search=t.root.querySelector('#team-search');
+    search.value='Voice Commands';search.dispatchEvent(new t.w.Event('input'));
+    assert.equal(wrapper.hidden,false);assert.equal(voice.closest('.settings-group').hidden,false);
+    assert.equal(voice.closest('.category-controls').hidden,false,'search expands Navigation to reach the voice control');
+    search.value='Text Size';search.dispatchEvent(new t.w.Event('input'));
+    assert.equal(wrapper.hidden,true,'search filters the entire saved voice control');
+    search.value='';search.dispatchEvent(new t.w.Event('input'));
+    assert.equal(wrapper.hidden,false);
+    resume.click();assert.equal(t.sessions.length,1);assert.equal(t.sessions[0].started,true);assert.equal(t.w.AccessEase.getSettings().voice,true);
+    voice.click();assert.equal(t.sessions[0].aborted,true);assert.equal(t.w.AccessEase.getSettings().voice,false);
+    assert.equal(JSON.parse(t.w.localStorage.getItem('accessease.preferences.v1')).voiceRequested,false);
+    assert.equal(t.root.querySelector('[data-setting="voice"]'),voice,'moving the control retains its original listeners');
+    assert.deepEqual(t.errors,[]);
+  }finally{t.w.close();}
+});
 
 test('speech ending requests a final transcript and runs a completed command once',()=>{
   const t=setup(()=>{}),clock=resultClock(t.w);

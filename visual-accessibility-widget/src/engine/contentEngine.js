@@ -3,21 +3,23 @@ import { colorModeVariables, colorSupportCss } from '../colorVision/colorModes.j
 import { dyslexiaFontCss } from './dyslexiaFont.js';
 import { applyDyslexiaText } from './dyslexiaText.js';
 import { applyLightTheme } from './lightTheme.js';
+import { applyContrastTheme, contrastThemeCss } from './contrastTheme.js';
 import { reflowText } from './textReflow.js';
 import { applyColorVision } from './colorVision.js';
 import { applyGrayscale } from './grayscale.js';
+import { applyAdditionalVisuals } from './additionalVisuals.js';
 const TEXT_SKIP = 'script,style,noscript,svg,svg *,canvas,iframe,[data-uaw-ignore],[data-uaw-ignore] *,[data-uaw-icon],[data-uaw-icon] *,[aria-hidden="true"],[aria-hidden="true"] *';
 const SCOPE = ':where([data-uaw-scope], [data-uaw-scope] *):not(:where([data-uaw-ignore],[data-uaw-ignore] *))';
 const TEXT = `${SCOPE}:not(:where(svg, svg *, img, video, canvas, [data-uaw-icon], [data-uaw-icon] *, [data-uaw-ignore], [data-uaw-ignore] *))`;
 
-export function createContentEngine({ root = document.body, host, nonce }) {
+export function createContentEngine({ root = document.body, host, nonce, styleRoot = document.head }) {
   const journal = new Map();
   const scopes = new Map();
-  let current, timer, dyslexiaReady=false;
+  let current, timer, dyslexiaReady=!document.fonts, dyslexiaLoading=false;
   const stylesheet = document.createElement('style');
   if (nonce) stylesheet.nonce = nonce;
   stylesheet.dataset.uawStyle = '';
-  document.head.append(stylesheet);
+  styleRoot.append(stylesheet);
 
   function override(el, property, value) {
     let entries = journal.get(el);
@@ -48,10 +50,23 @@ export function createContentEngine({ root = document.body, host, nonce }) {
     }
   }
   function apply(settings) {
+    const preserveScroll = settings.dyslexiaFont || current?.dyslexiaFont;
+    const scroller = document.scrollingElement || document.documentElement;
+    const left = scroller.scrollLeft, top = scroller.scrollTop;
+    applyContent(settings);
+    if (preserveScroll) {
+      // Baseline measurement can temporarily clamp the scroll position.
+      root.getBoundingClientRect();
+      if (scroller.scrollLeft !== left) scroller.scrollLeft = left;
+      if (scroller.scrollTop !== top) scroller.scrollTop = top;
+    }
+  }
+  function applyContent(settings) {
+    const scrollGuard = settings.dyslexiaFont || current?.dyslexiaFont ? 'html{overflow-anchor:none!important;}' : '';
     current = settings;
     // Host transition:all must not animate baseline restoration. Otherwise a
     // mid-transition font size gets multiplied again on every content refresh.
-    stylesheet.textContent = `${SCOPE}{transition:none!important;}`;
+    stylesheet.textContent = scrollGuard + `${SCOPE}{transition:none!important;}`;
     restore();
     scopeContent();
     const elements = [...scopes.keys()].flatMap(el => [el, ...el.querySelectorAll('*')])
@@ -68,25 +83,16 @@ export function createContentEngine({ root = document.body, host, nonce }) {
         if (!customLine && Number.isFinite(sizes[i].line)) override(el, 'line-height', `${sizes[i].line * settings.fontScale}px`);
       });
     }
-    let css = '';
+    let css = settings.dyslexiaFont ? scrollGuard : '';
     if (settings.colorVisionMode !== 'default') {
       applyColorVision([...new Set([root, ...elements])], settings.colorVisionMode, override);
       for (const el of scopes.keys()) for (const [property, value] of Object.entries(colorModeVariables(settings.colorVisionMode))) override(el, property, value);
       css += colorSupportCss(SCOPE);
     }
-    if (settings.fontScale !== 1 || settings.dyslexiaFont) css += `${TEXT}{overflow-wrap:anywhere!important;}`;
+    if (settings.fontScale !== 1) css += `${TEXT}{overflow-wrap:anywhere!important;}`;
     if (settings.theme === 'light') applyLightTheme([...new Set([root,...elements])], override);
     if (settings.theme === 'dark' || settings.theme === 'contrast') {
-      const palette = settings.theme === 'dark' ? ['#101827', '#e8eef9', '#9db8ff', '#93a4bd']
-        : settings.theme === 'contrast' ? ['#000000', '#ffffff', '#ffff00', '#ffffff']
-        : ['#ffffff', '#0f172a', '#1d4ed8', '#64748b'];
-      const [bg, fg, link, border] = palette;
-      css += `${TEXT}{color:${fg}!important;background-color:${bg}!important;border-color:${border}!important;text-shadow:none!important;}
-      ${SCOPE}:where(div,section,main,header,footer,nav,article,aside,form,fieldset,details,summary,table,thead,tbody,tr,td,th,dialog,button,input,select,textarea){background-color:${bg}!important;background-image:none!important;}
-      ${SCOPE}:where(a){color:${link}!important;}
-      ${SCOPE}:where(button,input,select,textarea,a[role="button"],a.button){color:${fg}!important;border:1px solid ${border}!important;}
-      ${SCOPE}:where(input,textarea)::placeholder{color:${border}!important;opacity:1!important;}
-      ${SCOPE}:where(:focus-visible){outline:3px solid ${link}!important;outline-offset:3px!important;}`;
+      css += contrastThemeCss(SCOPE,TEXT,settings.theme);
     }
     if (settings.spacingPreset !== 'default') {
       const enabled = key => settings.spacingPreset !== 'custom' || settings.customSpacingOverrides?.includes(key);
@@ -97,7 +103,6 @@ export function createContentEngine({ root = document.body, host, nonce }) {
     }
     if (settings.dyslexiaFont) {
       css += dyslexiaFontCss;
-      applyDyslexiaText(elements, override);
     }
     if (settings.highlightLinks) {
       const controls = `${SCOPE}:where(a[href],area[href],button,input[type="button"],input[type="submit"],input[type="reset"],input[type="image"],[role="button"],[role="link"],summary)`;
@@ -107,35 +112,54 @@ export function createContentEngine({ root = document.body, host, nonce }) {
       ${SCOPE}:where(a[href],[role="link"]){text-decoration:underline!important;text-decoration-thickness:2px!important;text-underline-offset:4px!important;}
       ${controls}:focus-visible{outline:3px dashed ${color}!important;outline-offset:5px!important;}`;
     }
+    if(settings.additional)applyAdditionalVisuals({root,roots:[...scopes.keys()],elements,settings:settings.additional,override});
+    if(settings.theme==='dark'||settings.theme==='contrast'){
+      // Readability takes priority over custom paint colors while a theme is on.
+      const canvas=root===document.body?[document.documentElement,root]:[root];
+      applyContrastTheme([...new Set([...canvas,...elements])],settings.theme,override);
+    }
     if (settings.grayscale) applyGrayscale([...scopes.keys()],override);
     // Commit scaled inline values while transitions are disabled, then return
     // the host's hover/focus transitions unchanged.
     root.getBoundingClientRect();
-    stylesheet.textContent = css;
-    if(settings.fontScale>1 || settings.dyslexiaFont || settings.spacingPreset!=='default') {
-      reflowText(elements,override,{compactNavigation:settings.dyslexiaFont});
-      if(settings.dyslexiaFont && !dyslexiaReady && document.fonts) {
-        dyslexiaReady=true;
-        Promise.all([400,700].flatMap(weight=>['normal','italic'].map(style=>
-          document.fonts.load(`${style} ${weight} 16px "UAW OpenDyslexic"`)
-        ))).then(()=>refresh(),()=>{dyslexiaReady=false;});
+    stylesheet.textContent = css+(settings.dyslexiaFont&&dyslexiaReady?`${SCOPE}{transition:none!important;}`:'');
+    if(settings.fontScale>1 || settings.spacingPreset!=='default')reflowText(elements,override);
+    if(settings.dyslexiaFont){
+      if(dyslexiaReady){
+        applyDyslexiaText(elements,override);
+        root.getBoundingClientRect();stylesheet.textContent=css;
+      }
+      else if(!dyslexiaLoading&&document.fonts){
+        dyslexiaLoading=true;
+        Promise.all([400,700].flatMap(weight=>['normal','italic'].map(style=>document.fonts.load(`${style} ${weight} 16px "UAW OpenDyslexic"`))))
+          .then(()=>{dyslexiaReady=true;dyslexiaLoading=false;refresh();},()=>{dyslexiaLoading=false;});
       }
     }
   }
   function refresh() { clearTimeout(timer); timer = setTimeout(() => { if (current) apply(current); }, 80); }
+  const hasDyslexiaFont = el => el?.style?.fontFamily.includes('UAW OpenDyslexic');
   const observer = new MutationObserver(records => {
     if (records.some(record => !host?.contains(record.target) && (
-      (current?.dyslexiaFont && record.type==='characterData') || [...record.addedNodes, ...record.removedNodes].some(node =>
-        node !== host && (node.nodeType===1 || (current?.dyslexiaFont && node.nodeType===3)))
+      (current?.dyslexiaFont && record.type==='attributes') ||
+      (current?.dyslexiaFont && record.type==='characterData' && !hasDyslexiaFont(record.target.parentElement)) || [...record.addedNodes, ...record.removedNodes].some(node =>
+        node !== host && (node.nodeType===1 || (current?.dyslexiaFont && node.nodeType===3 && !hasDyslexiaFont(record.target))))
     ))) refresh();
   });
-  observer.observe(root, { childList: true, characterData: true, subtree: true });
-  window.addEventListener('resize', refresh);
+  // Sticky/reveal classes and mobile browser chrome change while scrolling;
+  // neither should repeatedly restore and refit the entire document.
+  observer.observe(root, { childList: true, characterData: true, subtree: true, attributes:true,attributeFilter:['hidden','open'] });
+  let viewportWidth = window.innerWidth;
+  function resize() {
+    const changed = viewportWidth !== window.innerWidth;
+    viewportWidth = window.innerWidth;
+    if (!current?.dyslexiaFont || changed) refresh();
+  }
+  window.addEventListener('resize', resize);
   return {
     apply, refresh,
     destroy() {
       current=null;
-      clearTimeout(timer); observer.disconnect(); window.removeEventListener('resize', refresh); restore(); stylesheet.remove();
+      clearTimeout(timer); observer.disconnect(); window.removeEventListener('resize', resize); restore(); stylesheet.remove();
       for (const [el, previous] of scopes) previous === null ? el.removeAttribute('data-uaw-scope') : el.setAttribute('data-uaw-scope', previous);
       scopes.clear();
     },

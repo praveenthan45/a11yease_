@@ -32,6 +32,11 @@ import AudioTranscripts from './AudioTranscripts.jsx';
 import { collectSteps, stepLabel, focusStep } from './stepGuide.js';
 import { installPanelLanguage } from './panelLanguage.js';
 import languageCss from './panelLanguage.css?inline';
+import widgetThemeCss from './widgetTheme.css?inline';
+import AdditionalSettings from './AdditionalSettings.jsx';
+import { additionalCards, DEFAULT_ADDITIONAL, normalizeAdditional, additionalActive, effectiveVisualSettings } from './additionalPreferences.js';
+import { createCognitiveReading } from './cognitiveReading.js';
+import { createWidgetAppearance } from './widgetAppearance.js';
 
 const base = window.AccessEase;
 let settingsLayout;
@@ -54,18 +59,21 @@ function initializeInactiveAssistDefaults() {
 initializeInactiveAssistDefaults();
 const toolsDefault = Object.freeze({ audioTranscripts:false, summary:false, progress:false, distraction:false, steps:false, notifications:false, liveCaptions:false, simplifiedNav:false, 'alt-text':false });
 const defaultNavin = createDefaultSettings();
-let visual = { ...DEFAULT_SETTINGS }, tools = { ...toolsDefault }, navin = null, visualEngine, readingEngine, ui;
+let visual = { ...DEFAULT_SETTINGS }, tools = { ...toolsDefault }, additional = { ...DEFAULT_ADDITIONAL }, navin = null, visualEngine, readingEngine, cognitiveReadingEngine, widgetAppearance, ui;
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
   visual = normalizeSettings(saved.visual);
+  additional = normalizeAdditional(saved.additional);
+  // Drop retired or invalid preference keys without changing other saved groups.
+  if(saved.additional && JSON.stringify(saved.additional)!==JSON.stringify(additional))localStorage.setItem(storageKey,JSON.stringify({...saved,additional}));
   for (const key of Object.keys(tools)) if (typeof saved.tools?.[key] === 'boolean') tools[key] = saved.tools[key];
 } catch { /* Keep defaults when storage is unavailable or invalid. */ }
 
 const visualCards = [
   ['fontScale','Text Size','Aa'], ['contrast','High Contrast Mode','◐'], ['dark','Dark Mode','☾'],
-  ['light','Light Mode','☀'], ['grayscale','Grayscale Mode','◒'], ['colorVisionMode','Color Blindness Support','◉'],
+  ['light','Light Mode','☀'], ['grayscale','Grayscale Mode','◒'], ['colorVisionMode','Color Blindness Mode','◉'],
   ['spacingPreset','Text Spacing','↔'], ['magnifier','Text Magnifier','⌕'], ['highlightLinks','Highlight Links','↗'],
-  ['dyslexiaFont','Dyslexia-Friendly Font','Aa'], ['readingGuide','Reading Guide','━'], ['readingMask','Reading Mask','▰'],
+  ['dyslexiaFont','Dyslexia Mode','Aa'], ['readingGuide','Reading Guide','━'], ['readingMask','Reading Mask','▰'],
 ];
 const toolCards = [
   ['audioTranscripts','Audio Transcripts','≡'], ['summary','Content Summary','☷'], ['progress','Reading Progress','◴'],
@@ -75,7 +83,7 @@ const navinFeatures = a11yFeatures.filter(feature => !['reset','preferences','pr
 const motionCards = [['reduce-motion','Reduce Motion'],['pause-animations','Pause Animations'],['pause-auto-media','Stop Auto-Playing Media'],['flashing','Flashing Content Protection']];
 
 function persist() {
-  try { localStorage.setItem(storageKey, JSON.stringify({visual,tools})); } catch { /* Session-only preferences. */ }
+  try { localStorage.setItem(storageKey, JSON.stringify({visual,tools,additional})); } catch { /* Session-only preferences. */ }
 }
 function changedVisual(id) {
   return ['contrast','dark','light'].includes(id) ? visual.theme === id : JSON.stringify(visual[id]) !== JSON.stringify(DEFAULT_SETTINGS[id]);
@@ -100,17 +108,27 @@ function navinAdjusted(id) {
   return false;
 }
 function snapshot() {
-  return {base:base.getSettings(),visual:{...visual},tools:{...tools},assist:navin ? snapshotSettingsPatch(navin.settings) : {}};
+  return {base:base.getSettings(),visual:{...visual},tools:{...tools},additional:{...additional},assist:navin ? snapshotSettingsPatch(navin.settings) : {}};
+}
+function applyVisualSettings() {
+  const effective=effectiveVisualSettings(visual,additional);
+  visualEngine.apply(effective);readingEngine.apply(effective);
+  cognitiveReadingEngine?.apply(additional.cognitiveReading);
+  widgetAppearance?.apply(effective,base.getSettings());
+}
+function changeAdditional(patch) {
+  additional=normalizeAdditional({...additional,...patch});applyVisualSettings();persist();ui?.();base.refresh();base.status('Accessibility settings updated.');
 }
 function changeVisual(patch, message='Visual settings updated.') {
   visual=normalizeSettings({...visual,...patch});
-  visualEngine.apply(visual); readingEngine.apply(visual); persist(); ui?.(); base.refresh(); base.status(message);
+  applyVisualSettings(); persist(); ui?.(); base.refresh(); base.status(message);
 }
 function changeTool(key, value) {
   tools={...tools,[key]:value}; persist(); ui?.(); base.refresh();
   base.status(`${toolCards.find(card=>card[0]===key)?.[1]||({liveCaptions:'Live Captions',simplifiedNav:'Simplify Navigation','alt-text':'Image alternative text'})[key]||key} ${value?'enabled':'disabled'}.`);
 }
 function resetTeam() {
+  additional={...DEFAULT_ADDITIONAL};
   changeVisual({...DEFAULT_SETTINGS},'All visual settings reset.');
   tools={...toolsDefault}; persist(); ui?.();
   navin?.actions.resetScope('all');
@@ -120,6 +138,7 @@ function resetTeam() {
 }
 function restoreSnapshot(settings) {
   // Each module validates its own values. Imported data cannot start voice input.
+  additional=normalizeAdditional(settings.additional);
   base.setSettings(settings.base||{});
   visual=normalizeSettings(settings.visual);
   tools={...toolsDefault};
@@ -183,7 +202,7 @@ function VisualOptions({id}) {
   if(id==='fontScale')return <><p className="team-description">Resize all page text. The settings panel keeps its own size.</p><div className="team-row"><button aria-label="Decrease Text Size" disabled={visual.fontScale<=.5} onClick={()=>changeVisual({fontScale:visual.fontScale-.1})}>−</button><button aria-label="Reset Text Size" onClick={()=>changeVisual({fontScale:1})}>{Math.round(visual.fontScale*100)}%</button><button aria-label="Increase Text Size" disabled={visual.fontScale>=2} onClick={()=>changeVisual({fontScale:visual.fontScale+.1})}>+</button></div></>;
   if(['contrast','dark','light'].includes(id))return <Toggle label={visualCards.find(card=>card[0]===id)[1]} value={visual.theme===id} onChange={on=>changeVisual({theme:on?id:'default'})}/>;
   if(id==='colorVisionMode')return <div className="team-row"><label htmlFor="team-color-mode">Color palette</label><select id="team-color-mode" value={visual.colorVisionMode} onChange={event=>changeVisual({colorVisionMode:event.target.value})}>{COLOR_MODES.map(mode=><option key={mode.id} value={mode.id}>{mode.name}</option>)}</select><p className="team-description">Changes website backgrounds, text and controls to the selected assistance palette. Normal / Default restores original colors. Images and video keep their original colors.</p></div>;
-  if(id==='spacingPreset')return <><div className="team-row"><label htmlFor="team-spacing">Spacing preset</label><select id="team-spacing" value={visual.spacingPreset} onChange={event=>changeVisual({spacingPreset:event.target.value,...(SPACING_PRESETS[event.target.value]||{}),customSpacingOverrides:[]})}>{['default','comfortable','wide','custom'].map(preset=><option key={preset}>{preset}</option>)}</select></div>{visual.spacingPreset==='custom'&&[['letterSpacing','Letter spacing',0,.2,.01,'em'],['wordSpacing','Word spacing',0,.4,.01,'em'],['lineHeight','Line height',1.2,2.5,.1,'×'],['paragraphSpacing','Paragraph gap',0,3,.1,'em']].map(([key,label,min,max,step,suffix])=><Range key={key} id={key} label={label} value={visual[key]} min={min} max={max} step={step} suffix={suffix} onChange={value=>changeVisual({[key]:value,customSpacingOverrides:[...new Set([...visual.customSpacingOverrides,key])]})}/>)}</>;
+  if(id==='spacingPreset')return <><div className="team-row"><label htmlFor="team-spacing">Spacing preset</label><select id="team-spacing" value={visual.spacingPreset} onChange={event=>changeVisual({spacingPreset:event.target.value,...(SPACING_PRESETS[event.target.value]||{}),customSpacingOverrides:[]})}>{['default','comfortable','wide','custom'].map(preset=><option key={preset}>{preset}</option>)}</select></div>{visual.spacingPreset==='custom'&&[['lineHeight','Line height',1.2,2.5,.1,'×'],['letterSpacing','Letter spacing',0,.2,.01,'em'],['paragraphSpacing','Paragraph spacing',0,3,.1,'em']].map(([key,label,min,max,step,suffix])=><Range key={key} id={key} label={label} value={visual[key]} min={min} max={max} step={step} suffix={suffix} onChange={value=>changeVisual({[key]:value,customSpacingOverrides:[...new Set([...visual.customSpacingOverrides,key])]})}/>)}</>;
   return <><Toggle label={visualCards.find(card=>card[0]===id)[1]} value={visual[id]} onChange={value=>changeVisual({[id]:value})}/>
     {id==='magnifier'&&<div className="team-row"><p>Magnification: 1.5×</p><p className="team-description">Move the pointer over text or focus a text control to enlarge it.</p></div>}
     {id==='readingGuide'&&<Range id="guideHeight" label="Guide height" value={visual.guideHeight} min={2} max={24} step={2} suffix="px" onChange={value=>changeVisual({guideHeight:value})}/>}
@@ -313,111 +332,87 @@ function UnifiedControls() {
   useEffect(()=>{
     visualEngine=createContentEngine({root:document.body,host:base.host});
     readingEngine=createReadingEngine({shadow:base.root,root:document.body,update:changeVisual});
-    visualEngine.apply(visual);readingEngine.apply(visual);
-    base.registerExtension({activeCount:()=>visualCards.filter(([id])=>changedVisual(id)).length+Object.values(tools).filter(Boolean).length+navinActiveCount(),reset:resetTeam});
+    cognitiveReadingEngine=createCognitiveReading({root:document.body,host:base.host});
+    widgetAppearance=createWidgetAppearance(base);
+    applyVisualSettings();
+    base.registerExtension({activeCount:()=>visualCards.filter(([id])=>changedVisual(id)).length+Object.values(tools).filter(Boolean).length+additionalCards.filter(([id])=>additionalActive(additional,id)).length+navinActiveCount(),reset:resetTeam});
     window.AccessEaseTeam={getSettings:snapshot,setSettings:restoreSnapshot,reset:()=>base.reset(),refresh:()=>setRefresh(value=>value+1)};
     base.host.dataset.teamReady='true';
     base.host.dispatchEvent(new CustomEvent('accessease:ready'));
-    const listen=()=>setRevision(value=>value+1);
+    const listen=()=>{widgetAppearance.apply(effectiveVisualSettings(visual,additional),base.getSettings());setRevision(value=>value+1);};
     base.host.addEventListener('accessease:change',listen);
-    return()=>{base.host.removeEventListener('accessease:change',listen);readingEngine.destroy();visualEngine.destroy();};
+    return()=>{base.host.removeEventListener('accessease:change',listen);widgetAppearance.destroy();cognitiveReadingEngine.destroy();readingEngine.destroy();visualEngine.destroy();};
   },[]);
   useEffect(()=>{
     const panel=base.root.querySelector('.panel');
     const handle=panel?.querySelector('.top');
     if(!panel||!handle)return undefined;
-    const key='accessease.panel.geometry.v1';
-    let drag=null,saveTimer;
+    const key='accessease.panel.position.v1';
+    let drag=null,position=null;
     const clamp=(value,min,max)=>Math.min(Math.max(value,min),Math.max(min,max));
     const viewportWidth=()=>document.documentElement.clientWidth||window.innerWidth;
-    const setPosition=(left,top,width,height)=>{
-      const rect=panel.getBoundingClientRect(),panelWidth=width??rect.width,panelHeight=height??rect.height;
-      const x=clamp(left,0,viewportWidth()-panelWidth),y=clamp(top,0,window.innerHeight-panelHeight);
+    const setPosition=(left,top)=>{
+      if(panel.hidden||viewportWidth()<=540)return;
+      const rect=panel.getBoundingClientRect();
+      const x=clamp(left,0,viewportWidth()-rect.width),y=clamp(top,0,window.innerHeight-rect.height);
       panel.style.inset='auto';panel.style.left=`${x}px`;panel.style.top=`${y}px`;panel.style.right='auto';panel.style.bottom='auto';panel.style.margin='0';
+      position={left:x,top:y};
     };
     const save=()=>{
-      const rect=panel.getBoundingClientRect();
-      if(!rect.width||!rect.height)return;
-      try{localStorage.setItem(key,JSON.stringify({left:rect.left,top:rect.top,width:rect.width,height:rect.height}));}catch{}
+      if(!position)return;
+      try{localStorage.setItem(key,JSON.stringify(position));}catch{}
     };
     try{
+      // Old resizable dimensions must not override the fixed, responsive size.
+      localStorage.removeItem('accessease.panel.geometry.v1');
       const saved=JSON.parse(localStorage.getItem(key)||'null');
-      if(saved&&[saved.left,saved.top,saved.width,saved.height].every(Number.isFinite)){
-        const width=clamp(saved.width,320,viewportWidth()-20),height=clamp(saved.height,300,window.innerHeight-20);
-        panel.style.width=`${width}px`;
-        panel.style.height=`${height}px`;
-        setPosition(saved.left,saved.top,width,height);
-      }
+      if(saved&&[saved.left,saved.top].every(Number.isFinite))position={left:saved.left,top:saved.top};
     }catch{}
-    const resizeHandles=[];
-    for(const edge of ['left','right','top','bottom']){
-      const grip=document.createElement('div');
-      grip.className=`panel-resize panel-resize--${edge}`;
-      grip.tabIndex=0;grip.setAttribute('role','separator');
-      grip.setAttribute('aria-label',`Resize accessibility panel from ${edge} edge`);
-      grip.setAttribute('aria-orientation',['left','right'].includes(edge)?'vertical':'horizontal');
-      let resizing=null;
-      const resize=(dx,dy,rect)=>{
-        const maxWidth=viewportWidth()-30,maxHeight=window.innerHeight-30;
-        const minWidth=Math.min(360,maxWidth),minHeight=Math.min(350,maxHeight);
-        let {left,top,width,height}=rect;
-        if(edge==='left'){width=clamp(rect.width-dx,minWidth,Math.min(maxWidth,rect.right));left=rect.right-width;}
-        if(edge==='right')width=clamp(rect.width+dx,minWidth,Math.min(maxWidth,viewportWidth()-rect.left));
-        if(edge==='top'){height=clamp(rect.height-dy,minHeight,Math.min(maxHeight,rect.bottom));top=rect.bottom-height;}
-        if(edge==='bottom')height=clamp(rect.height+dy,minHeight,Math.min(maxHeight,window.innerHeight-rect.top));
-        panel.style.width=`${width}px`;panel.style.height=`${height}px`;setPosition(left,top,width,height);
-      };
-      grip.addEventListener('pointerdown',event=>{
-        if(event.button!==0)return;
-        resizing={id:event.pointerId,x:event.clientX,y:event.clientY,rect:panel.getBoundingClientRect()};
-        grip.setPointerCapture(event.pointerId);event.preventDefault();event.stopPropagation();
-      });
-      grip.addEventListener('pointermove',event=>{
-        if(resizing&&resizing.id===event.pointerId)resize(event.clientX-resizing.x,event.clientY-resizing.y,resizing.rect);
-      });
-      const finish=event=>{if(resizing?.id===event.pointerId){resizing=null;save();}};
-      grip.addEventListener('pointerup',finish);grip.addEventListener('pointercancel',finish);
-      grip.addEventListener('keydown',event=>{
-        const horizontal=edge==='left'||edge==='right';
-        if(!(horizontal?['ArrowLeft','ArrowRight']:['ArrowUp','ArrowDown']).includes(event.key))return;
-        const step=event.shiftKey?40:15;
-        resize(event.key==='ArrowLeft'?-step:event.key==='ArrowRight'?step:0,event.key==='ArrowUp'?-step:event.key==='ArrowDown'?step:0,panel.getBoundingClientRect());
-        save();event.preventDefault();event.stopPropagation();
-      });
-      panel.append(grip);resizeHandles.push(grip);
-    }
-    handle.tabIndex=0;handle.setAttribute('aria-label','Move the accessibility panel with the arrow keys');handle.style.touchAction='none';
+    const reposition=()=>{
+      const movable=viewportWidth()>540;
+      handle.tabIndex=movable?0:-1;
+      if(movable){
+        handle.setAttribute('aria-label','Move the accessibility panel with the arrow keys');
+        if(position)setPosition(position.left,position.top);
+      }else{
+        drag=null;handle.removeAttribute('aria-label');
+        for(const property of ['inset','left','top','right','bottom','margin'])panel.style.removeProperty(property);
+      }
+    };
     const start=event=>{
-      if(event.button!==undefined&&event.button!==0||event.target.closest('button,a,input,select,textarea'))return;
+      if(viewportWidth()<=540||event.button!==undefined&&event.button!==0||event.target.closest('button,a,input,select,textarea'))return;
       const rect=panel.getBoundingClientRect();
       drag={pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,left:rect.left,top:rect.top};
-      panel.style.width=`${rect.width}px`;panel.style.height=`${rect.height}px`;setPosition(rect.left,rect.top);
+      setPosition(rect.left,rect.top);
       event.preventDefault();handle.setPointerCapture?.(event.pointerId);
     };
     const move=event=>{if(!drag||event.pointerId!==drag.pointerId)return;setPosition(drag.left+event.clientX-drag.startX,drag.top+event.clientY-drag.startY);};
     const stop=event=>{if(!drag||event.pointerId!==drag.pointerId)return;drag=null;save();};
     const keydown=event=>{
-      if(event.target!==handle||!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;
+      if(viewportWidth()<=540||event.target!==handle||!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;
       const rect=panel.getBoundingClientRect(),step=event.shiftKey?40:15;
       setPosition(rect.left+(event.key==='ArrowLeft'?-step:event.key==='ArrowRight'?step:0),rect.top+(event.key==='ArrowUp'?-step:event.key==='ArrowDown'?step:0));save();event.preventDefault();
     };
     handle.addEventListener('pointerdown',start);handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',stop);handle.addEventListener('pointercancel',stop);handle.addEventListener('keydown',keydown);
-    const observer=typeof ResizeObserver==='function'?new ResizeObserver(()=>{clearTimeout(saveTimer);saveTimer=setTimeout(save,180);}):null;
-    observer?.observe(panel);
-    return()=>{resizeHandles.forEach(grip=>grip.remove());handle.removeEventListener('pointerdown',start);handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',stop);handle.removeEventListener('pointercancel',stop);handle.removeEventListener('keydown',keydown);observer?.disconnect();clearTimeout(saveTimer);};
+    const observer=new MutationObserver(reposition);
+    observer.observe(panel,{attributes:true,attributeFilter:['hidden']});
+    window.addEventListener('resize',reposition);
+    reposition();
+    return()=>{handle.removeEventListener('pointerdown',start);handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',stop);handle.removeEventListener('pointercancel',stop);handle.removeEventListener('keydown',keydown);observer.disconnect();window.removeEventListener('resize',reposition);};
   },[]);
   useEffect(()=>{
     const features=createSudhinFeatures({host:base.host,root:base.root,status:base.status});
     features.apply(tools);
     return ()=>features.destroy();
   },[tools.liveCaptions,tools.simplifiedNav]);
-  useEffect(()=>{base.refresh();},[context.settings]);
+  useEffect(()=>{if(additionalCards.some(([id])=>additionalActive(additional,id)))applyVisualSettings();base.refresh();},[context.settings]);
   return <><RouteAnnouncer/><DemoForms/>{visualCards.map(([id,title,symbol])=><Card key={id} id={id} title={title} symbol={symbol} active={changedVisual(id)}><VisualOptions id={id}/></Card>)}
     <Tools refresh={refresh}/>
     <Card id="liveCaptions" title="Live Captions" symbol="CC" active={tools.liveCaptions}><Toggle label="Live Captions" value={tools.liveCaptions} onChange={on=>changeTool('liveCaptions',on)}/><p className="team-description">Shows available video caption tracks and timed data-captions while media plays. No automatic speech transcription; embedded players manage their own captions.</p></Card>
     <Card id="simplifiedNav" title="Simplify Navigation" symbol="↳" active={tools.simplifiedNav}><Toggle label="Simplify Navigation" value={tools.simplifiedNav} onChange={on=>changeTool('simplifiedNav',on)}/><p className="team-description">Use Tab to move through the main content and section headings. Turn off to restore the original tab order.</p></Card>
     {createPortal(<MotionCards/>,settingsLayout.targetFor('reduce-motion'))}
     {navinFeatures.filter(feature=>feature.id!=='flashing').map(({id,title,Panel})=>{if(id==='alt-text')return <Card key={id} id={id} title={title} active={tools[id]}/>;const Controls=consumerPanels[id]||Panel;return <Card key={id} id={id} title={title} active={navinAdjusted(id)}><Controls compact/></Card>;})}
+    <AdditionalSettings settings={additional} onChange={changeAdditional} layout={settingsLayout} base={base}/>
     <Preferences/><ReadingOverlays/>
   </>;
 }
@@ -426,14 +421,14 @@ if(base&&!base.host.dataset.teamReady){
   // Full-viewport click-through host also keeps fixed controls stable under page filters.
   Object.assign(base.host.style,{position:'fixed',inset:'0',pointerEvents:'none',zIndex:'2147483647'});
   setToolbarHost(base.host);
-  const style=document.createElement('style');style.textContent=getStylesText()+FORM_STYLES+CONFIRM_STYLES+css+themeCss+categorizedCss+languageCss;base.root.append(style);
+  const style=document.createElement('style');style.textContent=getStylesText()+FORM_STYLES+CONFIRM_STYLES+css+themeCss+categorizedCss+languageCss+widgetThemeCss;base.root.append(style);
   settingsLayout=createSettingsLayout(base);
   const mount=document.createElement('div');mount.className='team-mount';base.root.querySelector('.body').append(mount);
-  const total=13+visualCards.length+toolCards.length+1+navinFeatures.length+2+3+2;
+  const total=13+visualCards.length+toolCards.length+1+navinFeatures.length+2+3+2+additionalCards.length;
   base.root.querySelector('.total').textContent=`${total} settings`;
   base.root.querySelector('.top p').textContent='One panel. Your preferences. Every page.';
   installPanelLanguage(base,{onChange:()=>settingsLayout.filter()});
-  const config=normalizeConfig({...window.AccessEaseConfig?.assist,storageKeyPrefix:'accessease.team.assist.v2'});
+  const config=normalizeConfig({...window.AccessEaseConfig?.assist,storageKeyPrefix:'accessease.team.assist.v2',visualAffectsToolbar:true});
   const strings=createStrings(config.strings);
   createRoot(mount).render(<SettingsProvider config={config} strings={strings}><ConfirmProvider portalTarget={base.root}><AuditProvider><AltTextProvider><UnifiedControls/></AltTextProvider></AuditProvider></ConfirmProvider></SettingsProvider>);
 }

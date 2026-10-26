@@ -17,6 +17,7 @@ export const SPACING_PRESETS = Object.freeze({
   wide: { letterSpacing: 0.12, wordSpacing: 0.16, lineHeight: 2, paragraphSpacing: 2 },
 });
 
+const CUSTOM_SPACING_FIELDS = Object.freeze(['lineHeight', 'letterSpacing', 'paragraphSpacing']);
 const ranges = { fontScale: [MIN_FONT_SCALE, MAX_FONT_SCALE], letterSpacing: [0, 0.2], wordSpacing: [0, 0.4], lineHeight: [1.2, 2.5], paragraphSpacing: [0, 3], guideHeight: [2, 24], maskHeight: [60, 540] };
 const enums = { theme: ['default', 'light', 'dark', 'contrast'], colorVisionMode: COLOR_MODES.map(mode => mode.id), spacingPreset: ['default', 'comfortable', 'wide', 'custom'], zoomLevel: [1.5] };
 
@@ -26,7 +27,7 @@ export function normalizeSettings(input = {}) {
   for (const key of Object.keys(settings)) {
     const value = input[key];
     if (key === 'customSpacingOverrides' && Array.isArray(value)) {
-      settings[key] = [...new Set(value.filter(field => Object.hasOwn(SPACING_PRESETS.default, field)))];
+      settings[key] = [...new Set(value.filter(field => CUSTOM_SPACING_FIELDS.includes(field)))];
     } else if (key in ranges && typeof value === 'number' && Number.isFinite(value)) {
       const [min, max] = ranges[key];
       // Font sizes use whole 10-percentage-point steps, including saved/API values.

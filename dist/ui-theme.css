@@ -69,7 +69,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media(max-width:900px){.panel .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.panel .top{padding:20px;min-height:90px}.panel .intro{padding:15px 20px;font-size:15px}.panel .body{padding:0 20px 15px}.panel .team-search{padding:0 20px 15px}.panel .team-search:before{left:38px}.panel .team-search:after{left:51px}.panel .footer{padding:12px 20px}.panel .top h2{font-size:26px}}
 @media(max-width:540px){.panel{inset:0;margin:0;width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0}.panel .top{padding:15px;gap:10px;min-height:80px}.panel .top .logo{width:40px;height:40px}.panel .top h2{font-size:22px}.panel .top p{font-size:11px}.panel .close{width:35px;height:35px}.panel .intro{padding:15px;font-size:14px;gap:5px}.panel .intro-summary{gap:5px}.panel .total,.panel .count{font-size:11px}.panel .count{padding:4px 8px}.panel .team-search{padding:0 15px 12px}.panel .team-search:before{left:33px}.panel .team-search:after{left:46px}.panel .body{padding:0 15px 15px}.panel .grid{gap:8px}.panel .tile{grid-template-columns:30px minmax(0,1fr);gap:8px;padding:10px;min-height:100px}.panel .tile .icon{width:30px;height:35px}.panel .tile strong{font-size:12px}.panel .tile:after,.panel .tile[aria-pressed=true]:after{grid-row:2;grid-column:2}.panel .tile[data-setting=captions]{grid-template-columns:30px minmax(0,1fr);min-height:100px}.panel .team-card>summary{padding:10px 25px 10px 10px;gap:8px;font-size:12px;min-height:100px}.panel .team-card>summary .team-icon{width:30px;height:35px;font-size:20px}.panel .team-card>summary:after{right:8px}.panel .select-row label{font-size:12px}.panel .footer{padding:12px 15px}.panel .status{font-size:11px}.panel .reset{min-width:120px;padding:8px 10px;font-size:11px}}
 /* Right-docked full-height panel. */
-.panel{inset:15px 15px 15px auto;left:auto;right:15px;margin:0;width:min(650px,calc(100vw - 30px));max-width:calc(100vw - 30px)}
+.panel{inset:15px 15px 15px auto;left:auto;right:15px;margin:0;width:min(420px,calc(100vw - 30px));max-width:min(420px,calc(100vw - 30px))}
 .panel .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .panel .top{padding:20px;gap:15px;min-height:95px}.panel .top h2{font-size:26px}.panel .top .logo{width:45px;height:45px}.panel .top p{font-size:12px}
 .panel .intro{padding:15px 20px;font-size:15px}.panel .team-search{padding:0 20px 15px}.panel .team-search:before{left:38px}.panel .team-search:after{left:51px}.panel .body{padding:0 20px 15px}.panel .footer{padding:15px 20px}
@@ -93,9 +93,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 @media(forced-colors:active){.panel .team-options select,.panel .select-row select{appearance:auto;background-image:none;border-color:ButtonText}.panel select option:checked{background:Highlight;color:HighlightText}}
 
-/* Drag the panel by its header and resize it from the browser's lower corner handle. */
-.panel{resize:both;min-width:min(360px,calc(100vw - 30px));min-height:min(350px,calc(100dvh - 30px));overflow:hidden}
+/* Header dragging moves the fixed-size panel without resizing it. */
+.panel{resize:none;min-width:0;min-height:0;overflow:hidden}
 .panel .top{cursor:grab;touch-action:none;user-select:none}
 .panel .top:active{cursor:grabbing}
 .panel .top button{cursor:pointer;touch-action:auto}
 .panel .top:focus-visible{outline:3px solid var(--ae-primary);outline-offset:-3px}
+/* Phone sheets leave the host page visible; short viewports retain usable controls. */
+@media(max-width:540px){
+  .panel{--ae-mobile-sheet-height:min(max(60dvh,calc(500px + env(safe-area-inset-bottom,0px))),calc(100dvh - 72px));inset:auto 0 0;left:0;right:0;margin:0;width:100%;max-width:100%;height:var(--ae-mobile-sheet-height);max-height:var(--ae-mobile-sheet-height);border-radius:18px 18px 0 0;box-shadow:0 -8px 32px #09264426}
+  .panel .top,.panel .top:active{cursor:default;touch-action:auto}
+}

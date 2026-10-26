@@ -89,7 +89,7 @@ test('language menu supports pointer focus changes, keyboard selection and Escap
   }finally{api.destroy();dom.window.close();}
 });
 
-test('combined widget translates all 50 setting titles and searches in English and Tamil without changing settings',async()=>{
+test('combined widget translates all 61 setting titles and searches in English and Tamil without changing settings',async()=>{
   const errors=[],vc=new VirtualConsole();vc.on('jsdomError',error=>errors.push(error.message));
   const dom=new JSDOM('<html lang="en"><body><main><h1>Original website</h1></main></body></html>',{url:'http://localhost:1439',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
   const w=dom.window;w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
@@ -106,11 +106,17 @@ test('combined widget translates all 50 setting titles and searches in English a
     assert.equal(w.AccessEaseTeam.getSettings().visual.highlightLinks,true);
     const snapshot=JSON.stringify(w.AccessEaseTeam.getSettings());
     const titles=[...root.querySelectorAll('.card-title,.tile strong,.select-row label,.team-card>summary>span:not(.team-icon)')].map(node=>{const label=node.cloneNode(true);label.querySelectorAll('small,.icon').forEach(child=>child.remove());return label.textContent.trim();}).filter(Boolean);
-    assert.equal(titles.length,50);
+    assert.equal(titles.length,61);
     const catalogKeys=new Set(Object.keys(panelDictionaries.ta).map(key=>key.toLowerCase()));
     for(const title of titles)assert.ok(catalogKeys.has(title.toLowerCase()),`Translation missing for ${title}`);
     api.setLanguage('ta');
-    assert.equal(root.querySelector('.intro-title').textContent,'உங்களுக்கு ஏற்றதைத் தேர்ந்தெடுக்கவும்');
+    assert.equal(root.querySelector('.intro-title'),null);
+    const toolbar=root.querySelector('.panel-toolbar');
+    assert.equal(toolbar.firstElementChild.className,'team-search');
+    assert.equal(toolbar.lastElementChild.className,'panel-language');
+    assert.equal(root.querySelector('.category-count,.category-icon'),null);
+    assert.equal(root.querySelector('.panel-language-toggle').getAttribute('aria-labelledby'),'panel-language-label panel-language-value');
+    assert.equal(root.querySelector('.panel-language-toggle').title,'மொழி: தமிழ்');
     const search=root.querySelector('#team-search');search.value='reduce';search.dispatchEvent(new w.Event('input'));
     assert.equal(root.querySelector('[data-team-card="reduce-motion"]').hidden,false);
     search.value='இயக்கத்தைக்';search.dispatchEvent(new w.Event('input'));
@@ -120,7 +126,7 @@ test('combined widget translates all 50 setting titles and searches in English a
     for(const [code] of PANEL_LANGUAGES){
       api.setLanguage(code);
       assert.equal(JSON.stringify(w.AccessEaseTeam.getSettings()),snapshot);
-      assert.deepEqual(readTitles(),titles.map(title=>translatePanelText(title,code)),`All 50 titles render in ${code}`);
+      assert.deepEqual(readTitles(),titles.map(title=>translatePanelText(title,code)),`All 61 titles render in ${code}`);
     }
     assert.equal(w.document.querySelector('h1').textContent,'Original website');
     assert.equal(w.document.documentElement.lang,'en');

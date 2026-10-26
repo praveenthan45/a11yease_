@@ -160,6 +160,7 @@ export function SettingsProvider({ config, strings, children }) {
       settings: stateRef.current,
       contentRootSelector: activeConfig.contentRoot,
       forcedTarget: activeConfig.visualTarget,
+      affectToolbar: activeConfig.visualAffectsToolbar === true,
     };
     getVisualApplier().apply(options);
     getMotionApplier().apply({

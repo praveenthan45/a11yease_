@@ -14,7 +14,7 @@ it needs permission to connect to its temporary localhost server.
 
 # AccessEase — unified team widget
 
-The Docker demo now combines all four developers' modules in **one launcher and one searchable panel with 45 controls**. Reset, preference import/export and saved profiles cover the combined settings. The original projects remain available for development; the demo does not load their separate launchers.
+The Docker demo now combines all four developers' modules in **one launcher and one searchable panel with 61 controls**. Reset, preference import/export and saved profiles cover the combined settings. The original projects remain available for development; the demo does not load their separate launchers.
 
 ## Build and run
 
@@ -50,6 +50,58 @@ Copy `widget.js`, `team-features.js`, `accessibility-badge.png` and `OpenDyslexi
 ```html
 <script src="/assets/widget.js" defer></script>
 ```
+
+The panel opens at a fixed 420px width on desktop. On phones (540px and narrower),
+it opens as a bottom sheet at about 60% of the viewport height. Compact rows and
+a 500px minimum target show the first five settings on standard phone screens,
+while leaving at least 72px of the website visible. Shorter viewports cap the
+sheet height to preserve that website space. Settings scroll inside the sheet;
+close, language, search and reset stay accessible. Dragging the desktop header moves the panel; resizing and
+previously saved custom sizes are disabled.
+
+The first section below search is **Accessibility modes**, with Dyslexia Mode,
+Grayscale Mode, Color Blindness Mode, Cognitive Disability Mode and Cognitive
+Reading Mode. Voice Command is under Navigation; Text to Speech is under Reading with its
+speed control. These use the existing settings, saved preferences and reset action.
+Text to Speech has a plus/minus button that opens its Adjustable Reading Speed
+dropdown. Enabling Text to Speech also opens this control. Speed is no longer a
+separate row under Reading; searching for reading speed opens it within the mode.
+Other settings follow in their categories. Search sits to the left of a round
+language flag button. Category headings show their names without icons or counts.
+Each category has a plus/minus button to expand or collapse its settings.
+Accessibility modes starts expanded; other categories start collapsed. Search
+expands matching categories and restores the chosen layout when cleared. The
+blue reset button and distinct setting icons use the shared widget theme.
+
+The widget interface uses the five-color palette in `integration/widgetTheme.css`:
+background `#F8FAFC`, cards `#FFFFFF`, text `#14253D`, accent `#155EEF` and buttons
+`#0B3970`. It has readable labels, 44px control targets, clear keyboard focus and
+distinct switch positions. Operating-system high contrast colors remain supported.
+
+The widget also includes eleven additional controls (61 total):
+
+| Location | Controls | Behaviour |
+| --- | --- | --- |
+| Accessibility modes | Cognitive Disability Mode | Adds accent-colored outlines to headings, hyperlinks and buttons; paragraphs and surrounding containers stay unboxed. |
+| Accessibility modes | Cognitive Reading Mode | Emphasizes the beginning of each word and softens its remaining letters to help readers follow text across the page. Text size and page layout stay at their existing settings. |
+| Vision | Highlight Titles; High Saturation; Low Saturation | Heading outlines and mutually exclusive 170%/50% color saturation. Saturation composes with grayscale and preserves floating page controls. |
+| Vision | Adjust Text Color; Adjust Background Color; Adjust Title Color | Fifteen labelled color swatches, a selected-state indicator, preview, and an individual “Use website colors” reset. Text and heading colors remain independent. |
+| Navigation | Big Dark Cursor; Big Light Cursor | Mutually exclusive outlined 48px cursors. |
+| Navigation | Link Navigation | A live dropdown of visible, enabled links and buttons by accessible name. Duplicate names are numbered. Selecting an entry closes the panel, scrolls to the real control and focuses it; Enter or a click then activates it normally. |
+
+Profiles apply a derived presentation without replacing individual preferences.
+All additional preferences share save/reload, export/import, profiles, search and
+Reset all. Old exports remain supported. The original five main modes remain first.
+New setting titles are included in all 20 panel languages. Page link/button names
+retain the host website’s wording.
+Color overrides preserve readable button and input labels by choosing a contrasting
+foreground when the requested text color has insufficient contrast against the detected background.
+
+Behaviour references: [UserWay’s feature guide](https://help.userway.org/en/articles/9696274-getting-to-know-your-accessibility-widget-a-feature-by-feature-guide),
+[accessWidget profiles](https://support.accessibe.com/hc/en-us/articles/29150094493714-What-are-accessibility-profiles-in-accessWidget),
+and [W3C page structure guidance](https://www.w3.org/WAI/tutorials/page-structure/).
+Run
+`node --test tests/additional-settings.test.cjs` for these controls’ integration checks.
 
 Optional plain-language replacements can be supplied before the script through `window.AccessEaseSimpleText`. Captions/transcripts require supplied tracks or transcripts; this widget does not generate missing audio transcriptions. Summaries extract existing sentences. Audits report markup problems; authentication, form validation and confirmation must be integrated into the host application's actions using the components described in `AssistAccess/INTEGRATION-FORMS.md`.
 

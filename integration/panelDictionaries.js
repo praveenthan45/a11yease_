@@ -17,4 +17,24 @@ import vi from './locales/vi.json' with { type: 'json' };
 import pl from './locales/pl.json' with { type: 'json' };
 import uk from './locales/uk.json' with { type: 'json' };
 import th from './locales/th.json' with { type: 'json' };
-export const panelDictionaries = { ta, hi, es, fr, de, pt, ar, zh, ja, ko, ru, it, nl, tr, id, vi, pl, uk, th };
+import {additionalDictionaries} from './additionalDictionaries.js';
+const catalogs = { ta, hi, es, fr, de, pt, ar, zh, ja, ko, ru, it, nl, tr, id, vi, pl, uk, th };
+const modeHeadings = {
+  ta:'அணுகல்தன்மை பயன்முறைகள்', hi:'सुलभता मोड', es:'Modos de accesibilidad',
+  fr:'Modes d’accessibilité', de:'Barrierefreiheitsmodi', pt:'Modos de acessibilidade',
+  ar:'أوضاع إمكانية الوصول', zh:'无障碍模式', ja:'アクセシビリティモード', ko:'접근성 모드',
+  ru:'Режимы доступности', it:'Modalità di accessibilità', nl:'Toegankelijkheidsmodi',
+  tr:'Erişilebilirlik modları', id:'Mode aksesibilitas', vi:'Chế độ trợ năng',
+  pl:'Tryby dostępności', uk:'Режими доступності', th:'โหมดการช่วยเหลือพิเศษ',
+};
+// Reuse each catalog's feature names for the promoted modes and their search aliases.
+export const panelDictionaries = Object.fromEntries(Object.entries(catalogs).map(([code,entries])=>[code,{
+  ...entries,
+  ...additionalDictionaries[code],
+  'Accessibility modes':modeHeadings[code],
+  'Dyslexia Mode':entries['Dyslexia-Friendly Font'],
+  'Voice Command':entries['Voice Commands'],
+  'Text to Speech':entries['Text-to-Speech'],
+  'Color Blindness Mode':entries['Color Blindness Support'],
+  'Brightness mode':entries['Brightness, contrast and saturation'],
+}]));

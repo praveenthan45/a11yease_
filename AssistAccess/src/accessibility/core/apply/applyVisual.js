@@ -83,7 +83,7 @@ export function createVisualApplier() {
    * @param {string|null} [options.contentRootSelector]
    * @param {'auto'|'document'|'contentRoot'} [options.forcedTarget] from config
    */
-  function apply({ settings, contentRootSelector = null, forcedTarget = 'auto' } = {}) {
+  function apply({ settings, contentRootSelector = null, forcedTarget = 'auto', affectToolbar = false } = {}) {
     if (typeof document === 'undefined') return;
     const visual = settings.visual;
 
@@ -124,12 +124,12 @@ export function createVisualApplier() {
       state.signature = signature;
     }
 
-    // Keep the toolbar readable: invert the filters for the host when it sits
-    // inside the filtered subtree.
+    // Integrated toolbars can follow the user's filters too. Copy the filter
+    // only when outside the filtered subtree, so it is never applied twice.
     const host = getToolbarHost();
     if (host) {
       const hostIsInsideScope = root === host || (typeof root.contains === 'function' && root.contains(host));
-      const inverse = hostIsInsideScope ? buildInverseFilterString(multipliers) : '';
+      const inverse = affectToolbar ? (hostIsInsideScope ? '' : filter) : (hostIsInsideScope ? buildInverseFilterString(multipliers) : '');
       if ((host.style.filter || '') !== inverse) host.style.filter = inverse;
     }
   }

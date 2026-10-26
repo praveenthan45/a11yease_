@@ -1,11 +1,18 @@
-.panel .panel-language{position:relative;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-shrink:0;padding:10px 25px;border-bottom:1px solid var(--border);font-size:14px;background:var(--white);color:var(--navy)}
-.panel-language>span{font-weight:600}
-.panel .panel-language-toggle{display:flex;align-items:center;gap:10px;max-width:70%;min-height:40px;padding:5px 15px;background:var(--bg);color:var(--navy);border:1px solid var(--border);border-radius:9px;font:inherit}
-.panel-language-toggle:after{content:'▾';color:var(--blue);margin-left:5px}
+.panel .panel-language{position:static;display:flex;align-items:center;flex:0 0 44px;width:44px;min-width:44px;height:44px;padding:0;font-size:14px;color:var(--navy)}
+/* The round flag keeps a full language label for screen readers and keyboard users. */
+.panel-language #panel-language-label,.panel-language #panel-language-value{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.panel .panel-language-toggle{display:grid;place-items:center;width:44px;min-width:44px;height:44px;min-height:44px;padding:5px;background:var(--bg);color:var(--navy);border:1px solid var(--border);border-radius:50%;font:inherit}
+.panel-language-toggle:after{content:none}
+.panel .panel-language-toggle:hover{border-color:var(--blue)}
 .panel-language img{display:block;width:30px;height:20px;flex-shrink:0;object-fit:contain;border:1px solid var(--border);border-radius:2px}
-.panel .panel-language-list{position:absolute;right:25px;top:calc(100% - 5px);width:min(360px,calc(100% - 50px));max-height:250px;overflow:auto;overscroll-behavior:contain;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:10px;z-index:100;background:var(--white);border:1px solid var(--border);border-radius:9px;box-shadow:0 4px 12px rgba(9,38,68,.2)}
+.panel .panel-language-toggle img{width:32px;height:32px;object-fit:cover;border:0;border-radius:50%}
+.panel .panel-language-list{position:absolute;right:22px;top:calc(100% - 4px);width:min(360px,calc(100% - 44px));max-height:250px;overflow:auto;overscroll-behavior:contain;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:10px;z-index:100;background:var(--white);border:1px solid var(--border);border-radius:9px;box-shadow:0 4px 12px rgba(11,57,112,.2)}
 .panel .panel-language-list button{display:flex;align-items:center;gap:10px;min-width:0;min-height:40px;padding:5px 10px;border:1px solid transparent;border-radius:5px;text-align:start;font:inherit;overflow-wrap:anywhere;background:var(--white);color:var(--navy)}
 .panel .panel-language-list button:hover,.panel .panel-language-list button[aria-selected=true]{background:var(--bg);border-color:var(--blue)}
 .panel-language button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 .panel[lang] .card-title,.panel[lang] .team-card>summary>span,.panel[lang] .tile strong{overflow-wrap:anywhere}
-@container(max-width:400px){.panel .panel-language{padding:10px 20px;font-size:12px}.panel .panel-language-list{right:20px;width:calc(100% - 40px)}}
+@media(max-width:540px),(max-height:540px){
+  .panel .panel-language{font-size:12px}
+  .panel .panel-language-list{right:12px;width:calc(100% - 24px);max-height:min(240px,max(44px,calc(var(--ae-mobile-sheet-height,calc(100dvh - 30px)) - 160px)));padding:6px}
+  .panel .panel-language-list button{min-height:44px;padding:5px 6px;gap:6px}
+}

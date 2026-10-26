@@ -1,66 +1,119 @@
 // Presentation only: original buttons keep their listeners; React controls use portals.
 export const settingCategories = [
-  {id:'vision',label:'Vision',icon:'◉',settings:['light','dark','grayscale','colorVisionMode','visuals','contrast','highlightLinks']},
-  {id:'reading',label:'Reading',icon:'Aa',settings:['fontScale','spacingPreset','dyslexiaFont','magnifier','readingGuide','readingMask','speech','rate','align','simple','highlight','summary','progress']},
-  {id:'navigation',label:'Navigation',icon:'↗',settings:['keyboard','skip','targets','voice','switches','sticky','steps','simplifiedNav','headings']},
-  {id:'focus',label:'Focus',icon:'◎',settings:['focus','distraction','notifications','screen-reader','announcements']},
-  {id:'media',label:'Media',icon:'▶',settings:['captions','liveCaptions','audioTranscripts']},
-  {id:'motion',label:'Motion',icon:'≈',settings:['reduce-motion','pause-animations','pause-auto-media','flashing']},
-  {id:'forms',label:'Forms',icon:'☑',settings:['auth','form-labels','error-messages','password','confirm']},
-  {id:'tools',label:'Tools',icon:'⚙',settings:['timeLimits','preferences','profiles','alt-text']},
+  {id:'modes',label:'Accessibility modes',settings:['dyslexiaFont','grayscale','colorVisionMode','cognitiveDisability','cognitiveReading']},
+  {id:'vision',label:'Vision',settings:['light','dark','visuals','contrast','highlightLinks','highlightTitles','highSaturation','lowSaturation','textColor','backgroundColor','titleColor']},
+  {id:'reading',label:'Reading',settings:['fontScale','spacingPreset','magnifier','readingGuide','readingMask','speech','align','simple','highlight','summary','progress']},
+  {id:'navigation',label:'Navigation',settings:['keyboard','skip','targets','switches','sticky','voice','steps','simplifiedNav','headings','darkCursor','lightCursor','linkNavigation']},
+  {id:'focus',label:'Focus',settings:['focus','distraction','notifications','screen-reader','announcements']},
+  {id:'media',label:'Media',settings:['captions','liveCaptions','audioTranscripts']},
+  {id:'motion',label:'Motion',settings:['reduce-motion','pause-animations','pause-auto-media','flashing']},
+  {id:'forms',label:'Forms',settings:['auth','form-labels','error-messages','password','confirm']},
+  {id:'tools',label:'Tools',settings:['timeLimits','preferences','profiles','alt-text']},
 ];
+const searchAliases={dyslexiaFont:'Dyslexia-Friendly Font',voice:'Voice Commands',speech:'Text-to-Speech',colorVisionMode:'Color Blindness Support',visuals:'Brightness contrast saturation visual adjustments'};
 
 export function createSettingsLayout(base) {
   const root=base.root,grid=root.querySelector('.grid');
   const originalControls=[...grid.children];
+  const controlId=control=>control.dataset.setting||control.dataset.teamCard||control.querySelector('[data-setting]')?.dataset.setting||control.querySelector('select')?.id;
   grid.classList.add('settings-groups');
   const groups=new Map();
+  let currentQuery='';
+  const setExpanded=(group,expanded)=>{
+    if(!group.toggle)expanded=true;
+    group.controls.hidden=!expanded;
+    group.toggle?.setAttribute('aria-expanded',String(expanded));
+    group.section.dataset.expanded=String(expanded);
+  };
   for(const category of settingCategories){
     const section=document.createElement('section');
     section.className='settings-group';section.dataset.category=category.id;
     section.setAttribute('aria-labelledby',`category-${category.id}`);
     const heading=document.createElement('h3');heading.className='category-heading';heading.id=`category-${category.id}`;
-    const icon=document.createElement('span');icon.className='category-icon';icon.setAttribute('aria-hidden','true');icon.textContent=category.icon;
-    const label=document.createElement('span');label.textContent=category.label;
-    const count=document.createElement('span');count.className='category-count';
-    heading.append(icon,label,count);
+    const toggle=category.id==='modes'?null:document.createElement('button');
+    const label=document.createElement('span');label.className='category-label';label.textContent=category.label;
+    if(toggle){
+      toggle.type='button';toggle.className='category-toggle';
+      const expander=document.createElement('span');expander.className='category-expander';expander.setAttribute('aria-hidden','true');
+      toggle.append(label,expander);heading.append(toggle);
+    }else heading.append(label);
     const controls=document.createElement('div');controls.className='category-controls';
+    controls.id=`category-${category.id}-controls`;toggle?.setAttribute('aria-controls',controls.id);
     section.append(heading,controls);grid.append(section);
-    groups.set(category.id,{section,controls,count});
+    const group={section,controls,toggle,expanded:category.id==='modes',searchExpanded:true};
+    toggle?.addEventListener('click',()=>{
+      if(currentQuery)group.searchExpanded=!group.searchExpanded;else group.expanded=!group.expanded;
+      setExpanded(group,currentQuery?group.searchExpanded:group.expanded);
+    });
+    setExpanded(group,group.expanded);
+    groups.set(category.id,group);
   }
   const categoryFor=id=>settingCategories.find(category=>category.settings.includes(id))?.id||'tools';
   const targetFor=id=>groups.get(categoryFor(id)).controls;
+  // Move the original speech and rate controls together so their listeners and preferences stay intact.
+  const speech=originalControls.find(control=>control.dataset.setting==='speech');
+  const rate=originalControls.find(control=>control.querySelector('#rate'));
+  const speechSetting=document.createElement('section');speechSetting.className='speech-setting';speechSetting.dataset.teamCard='speech';
+  const speechHeader=document.createElement('div');speechHeader.className='speech-header';
+  const speedToggle=document.createElement('button');speedToggle.type='button';speedToggle.className='speech-options-toggle';
+  speedToggle.setAttribute('aria-label','Text to Speech options');speedToggle.setAttribute('aria-controls','speech-speed-options');
+  const speedIcon=document.createElement('span');speedIcon.className='category-expander';speedIcon.setAttribute('aria-hidden','true');speedToggle.append(speedIcon);
+  const speedOptions=document.createElement('div');speedOptions.id='speech-speed-options';speedOptions.className='speech-options';speedOptions.append(rate);
+  speechHeader.append(speech,speedToggle);speechSetting.append(speechHeader,speedOptions);
+  let speedExpanded=false,speedSearchExpanded=false,wasSpeaking=base.getSettings().speech;
+  const showSpeed=()=>{
+    const expanded=speedExpanded||speedSearchExpanded;
+    speedOptions.hidden=!expanded;speedToggle.setAttribute('aria-expanded',String(expanded));
+  };
+  speedToggle.addEventListener('click',()=>{speedExpanded=!(speedExpanded||speedSearchExpanded);speedSearchExpanded=false;showSpeed();});
+  base.host.addEventListener('accessease:change',()=>{
+    const speaking=base.getSettings().speech;
+    if(speaking&&!wasSpeaking)speedExpanded=true;
+    wasSpeaking=speaking;showSpeed();
+  });
+  root.querySelector('.reset').addEventListener('click',()=>{speedExpanded=false;showSpeed();});
+  showSpeed();
   for(const control of originalControls){
-    const id=control.dataset.setting||control.querySelector('select')?.id;
+    if(control===rate)continue;
+    if(control===speech){targetFor('speech').append(speechSetting);continue;}
+    const id=controlId(control);
+    if(control.classList.contains('voice-setting'))control.dataset.teamCard='voice';
     targetFor(id).append(control);
   }
   const search=document.createElement('div');search.className='team-search';
   search.innerHTML='<label for="team-search">Search accessibility settings</label><input id="team-search" type="search" placeholder="Search accessibility settings…" autocomplete="off">';
+  const toolbar=document.createElement('div');toolbar.className='panel-toolbar';toolbar.append(search);
+  root.querySelector('.top').after(toolbar);
+  root.querySelector('.intro').hidden=true;
   const empty=document.createElement('p');empty.className='team-empty';empty.hidden=true;empty.setAttribute('role','status');empty.textContent='No matching settings. Try another word or category.';
   root.querySelector('.body').append(empty);
   const filter=()=>{
     const query=search.querySelector('input').value.trim().toLowerCase();
+    const queryChanged=query!==currentQuery;currentQuery=query;
     grid.dataset.categoryFilter='all';
     let matches=0;
     for(const [id,group] of groups){
-      const cards=[...group.controls.children].filter(card=>card.matches('.tile,.select-row,.team-card'));
+      const cards=[...group.controls.children].filter(card=>card.matches('.tile,.select-row,.team-card,.speech-setting,.voice-setting'));
       const order=settingCategories.find(category=>category.id===id).settings;
-      const ordered=[...cards].sort((a,b)=>order.indexOf(a.dataset.setting||a.dataset.teamCard||a.querySelector('select')?.id)-order.indexOf(b.dataset.setting||b.dataset.teamCard||b.querySelector('select')?.id));
+      const ordered=[...cards].sort((a,b)=>order.indexOf(controlId(a))-order.indexOf(controlId(b)));
       ordered.forEach((card,index)=>{if(group.controls.children[index]!==card)group.controls.insertBefore(card,group.controls.children[index]);});
       let visible=0;
       for(const card of cards){
         const labelNode=card.querySelector('.card-title,.motion-title,strong,label,summary');
-        const label=base.panelLanguage?.searchText(labelNode)||labelNode?.textContent||'';
+        const id=controlId(card);
+        const speedLabel=card===speechSetting?(base.panelLanguage?.searchText(rate.querySelector('label'))||rate.querySelector('label').textContent):'';
+        const label=(base.panelLanguage?.searchText(labelNode)||labelNode?.textContent||'')+' '+(searchAliases[id]||'')+' '+speedLabel;
         card.hidden=!label.toLowerCase().includes(query);
+        if(card===speechSetting){speedSearchExpanded=Boolean(query)&&speedLabel.toLowerCase().includes(query);showSpeed();}
         if(!card.hidden)visible++;
       }
-      group.count.textContent=`${cards.length} settings`;
       group.section.hidden=visible===0;
+      if(queryChanged)group.searchExpanded=true;
+      setExpanded(group,query?group.searchExpanded:group.expanded);
       if(!group.section.hidden)matches+=visible;
     }
     empty.hidden=matches!==0;
   };
-  root.querySelector('.intro').after(search);
   search.querySelector('input').addEventListener('input',filter);
   // React may add content after initialization; observe children only to avoid attribute loops.
   const observer=new MutationObserver(filter);

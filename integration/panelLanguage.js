@@ -66,13 +66,15 @@ export function installPanelLanguage(base, {onChange=()=>{}}={}) {
   const list=doc.createElement('div');list.id='panel-language-list';list.className='panel-language-list';list.setAttribute('role','listbox');list.setAttribute('aria-labelledby',label.id);list.hidden=true;
   function image(country){const img=doc.createElement('img');img.src=flagImage(country);img.alt='';img.width=30;img.height=20;return img;}
   const selectedFlag=image('gb');button.append(selectedFlag,selected);row.append(label,button,list);
-  panel.querySelector('.top').after(row);
+  const toolbar=panel.querySelector('.panel-toolbar');
+  if(toolbar)toolbar.append(row);else panel.querySelector('.top').after(row);
   function close(){list.hidden=true;button.setAttribute('aria-expanded','false');}
   function source(node){const value=node.data, saved=originals.get(node);return saved&&value===saved.translated?saved.original:value;}
   function refresh(){
     observer.disconnect();
     panel.lang=language;
     const current=PANEL_LANGUAGES.find(([code])=>code===language);selected.textContent=current[1];selectedFlag.src=flagImage(current[2]);
+    button.title=translatePanelText('Language',language)+': '+current[1];
     list.querySelectorAll('[role=option]').forEach(option=>option.setAttribute('aria-selected',String(option.dataset.language===language)));
     onChange();
     const walker=doc.createTreeWalker(panel,view.NodeFilter.SHOW_TEXT);

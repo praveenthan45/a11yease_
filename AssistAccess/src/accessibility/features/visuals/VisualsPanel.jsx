@@ -1,9 +1,10 @@
-import React, { useId } from 'react';
+import React, { useId, useState } from 'react';
 
 import { useForcedColors } from '../../core/a11y/mediaQueries.js';
 import { VISUAL_RANGES } from '../../core/settingsSchema.js';
 import { useA11ySettings } from '../../core/SettingsContext.jsx';
 import { formatMessage } from '../../strings.js';
+import { createStorage } from '../../core/storage.js';
 import SliderControl from '../../ui/SliderControl.jsx';
 import Switch from '../../ui/Switch.jsx';
 import { matchPresetId, VISUAL_PRESETS } from './presets.js';
@@ -31,7 +32,15 @@ export default function VisualsPanel({compact=false}) {
   const targetId = useId();
   const targetHintId = useId();
 
-  const activePreset = matchPresetId(visual);
+  const [presetStorage]=useState(()=>createStorage(config.storage).adapter);
+  const presetKey=`${config.storageKeyPrefix}.visual-preset`;
+  const [preferredPreset,setPreferredPreset]=useState(()=>presetStorage.read(presetKey));
+  const activePreset = matchPresetId(visual,preferredPreset);
+  const rememberPreset=id=>{
+    setPreferredPreset(id);
+    if(id)presetStorage.write(presetKey,id);else presetStorage.remove(presetKey);
+  };
+  const adjust=values=>{rememberPreset(null);actions.setVisualValues(values);};
   const targetLocked = config.visualTarget !== 'auto';
 
   const percent = (value) => `${value}%`;
@@ -52,19 +61,20 @@ export default function VisualsPanel({compact=false}) {
           {copy.presetHint}
         </p>
         {VISUAL_PRESETS.map((preset) => (
-          <label className="a11ytb-choice" key={preset.id}>
+          <label className="a11ytb-choice" key={preset.id} data-selected={activePreset===preset.id}>
             <input
               type="radio"
               name={presetGroupName}
               value={preset.id}
               checked={activePreset === preset.id}
               aria-describedby={presetHintId}
-              onChange={() => actions.applyVisualPreset(preset)}
+              onChange={() => {rememberPreset(preset.id);actions.applyVisualPreset(preset);}}
             />
             <span className="a11ytb-choice__text">
               <span className="a11ytb-choice__label">{preset.label}</span>
               <span className="a11ytb-hint">{preset.description}</span>
             </span>
+            <span className="visual-preset-check" data-uaw-icon aria-hidden="true" hidden={activePreset!==preset.id}>✓</span>
           </label>
         ))}
       </fieldset>
@@ -82,7 +92,7 @@ export default function VisualsPanel({compact=false}) {
         min={VISUAL_RANGES.brightness.min}
         max={VISUAL_RANGES.brightness.max}
         step={VISUAL_RANGES.brightness.step}
-        onChange={(value) => actions.setVisualValues({ brightness: value })}
+        onChange={(value) => adjust({ brightness: value })}
         formatValue={percent}
         formatValueText={percentText}
       />
@@ -94,7 +104,7 @@ export default function VisualsPanel({compact=false}) {
         min={VISUAL_RANGES.contrast.min}
         max={VISUAL_RANGES.contrast.max}
         step={VISUAL_RANGES.contrast.step}
-        onChange={(value) => actions.setVisualValues({ contrast: value })}
+        onChange={(value) => adjust({ contrast: value })}
         formatValue={percent}
         formatValueText={percentText}
       />
@@ -106,7 +116,7 @@ export default function VisualsPanel({compact=false}) {
         min={VISUAL_RANGES.saturation.min}
         max={VISUAL_RANGES.saturation.max}
         step={VISUAL_RANGES.saturation.step}
-        onChange={(value) => actions.setVisualValues({ saturation: value })}
+        onChange={(value) => adjust({ saturation: value })}
         formatValue={percent}
         formatValueText={percentText}
       />
@@ -135,7 +145,7 @@ export default function VisualsPanel({compact=false}) {
       </div>
 
       <div className="a11ytb-button-row">
-        <button type="button" className="a11ytb-button" onClick={actions.resetVisual}>
+        <button type="button" className="a11ytb-button" onClick={()=>{rememberPreset(null);actions.resetVisual();}}>
           {copy.reset}
         </button>
       </div>

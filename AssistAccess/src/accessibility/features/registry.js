@@ -51,7 +51,7 @@ const featureDescriptors = [
   },
   {
     id: FEATURE_IDS.VISUALS,
-    title: 'Brightness, contrast and saturation',
+    title: 'Brightness mode',
     group: FEATURE_GROUPS.VISUAL,
     /** 'toolbar': fully deliverable as a user-side adjustment. */
     capability: 'toolbar',

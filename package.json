@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build --config integration/vite.config.js",
-    "test": "node tests/voice-commands.test.cjs && node tests/sticky-keys.test.cjs && node --test tests/unified.test.cjs tests/voice-runtime.test.cjs tests/reading-speed.test.cjs tests/visible-focus.test.cjs tests/switch-support.test.cjs tests/image-alt-text.test.mjs tests/simplified-navigation.test.mjs tests/simple-text.test.cjs tests/landing-refresh.test.cjs tests/platform.test.mjs tests/flashing.test.mjs tests/reduce-motion.test.mjs tests/panel-language.test.mjs tests/font-reflow.test.mjs tests/light-theme.test.mjs tests/grayscale.test.mjs",
+    "test": "node tests/voice-commands.test.cjs && node tests/sticky-keys.test.cjs && node --test tests/unified.test.cjs tests/voice-runtime.test.cjs tests/reading-speed.test.cjs tests/visible-focus.test.cjs tests/switch-support.test.cjs tests/image-alt-text.test.mjs tests/simplified-navigation.test.mjs tests/simple-text.test.cjs tests/landing-refresh.test.cjs tests/platform.test.mjs tests/flashing.test.mjs tests/reduce-motion.test.mjs tests/panel-language.test.mjs tests/panel-size.test.cjs tests/font-reflow.test.mjs tests/light-theme.test.mjs tests/grayscale.test.mjs tests/accessibility-modes.test.cjs tests/additional-settings.test.cjs",
     "test:server": "node --test tests/server.test.mjs",
     "package:cpanel": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-cpanel.ps1"
   },

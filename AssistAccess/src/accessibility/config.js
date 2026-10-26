@@ -38,6 +38,8 @@ export const defaultConfig = Object.freeze({
    * 'contentRoot' – pin filters to the resolved content root (opt-in; see docs).
    */
   visualTarget: 'auto',
+  /** Apply the same visual filters to an integrated toolbar when requested. */
+  visualAffectsToolbar: false,
   /** Launcher/panel placement. */
   position: Object.freeze({
     /** 'right-middle' pins the circular launcher to the right edge, vertically centred. */
