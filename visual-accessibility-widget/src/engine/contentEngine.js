@@ -15,7 +15,7 @@ const TEXT = `${SCOPE}:not(:where(svg, svg *, img, video, canvas, [data-uaw-icon
 export function createContentEngine({ root = document.body, host, nonce, styleRoot = document.head }) {
   const journal = new Map();
   const scopes = new Map();
-  let current, timer, dyslexiaReady=!document.fonts, dyslexiaLoading=false;
+  let current, timer, lastScrollAt=-Infinity, dyslexiaReady=!document.fonts, dyslexiaLoading=false;
   const stylesheet = document.createElement('style');
   if (nonce) stylesheet.nonce = nonce;
   stylesheet.dataset.uawStyle = '';
@@ -50,13 +50,22 @@ export function createContentEngine({ root = document.body, host, nonce, styleRo
     }
   }
   function apply(settings) {
+    const preserveScroll = settings.dyslexiaFont || current?.dyslexiaFont;
     const scroller = document.scrollingElement || document.documentElement;
     const left = scroller.scrollLeft, top = scroller.scrollTop;
     applyContent(settings);
-    // Any accessibility setting can trigger layout recalculation on host pages.
-    // Keep the user's reading position stable while the new styles are applied.
-    if (scroller.scrollLeft !== left) scroller.scrollLeft = left;
-    if (scroller.scrollTop !== top) scroller.scrollTop = top;
+    if (preserveScroll) {
+      // Baseline measurement can temporarily clamp the scroll position.
+      root.getBoundingClientRect();
+      if (scroller.scrollLeft !== left || scroller.scrollTop !== top) {
+        // CSS scroll-behavior:smooth must not animate internal corrections.
+        if (typeof scroller.scrollTo === 'function') scroller.scrollTo({left,top,behavior:'instant'});
+        else {
+          scroller.scrollLeft = left;
+          scroller.scrollTop = top;
+        }
+      }
+    }
   }
   function applyContent(settings) {
     const scrollGuard = settings.dyslexiaFont || current?.dyslexiaFont ? 'html{overflow-anchor:none!important;}' : '';
@@ -134,7 +143,17 @@ export function createContentEngine({ root = document.body, host, nonce, styleRo
       }
     }
   }
-  function refresh() { clearTimeout(timer); timer = setTimeout(() => { if (current) apply(current); }, 80); }
+  function runRefresh() {
+    timer=undefined;
+    if (!current) return;
+    // Lazy-loaded content can arrive on every scroll. Wait for the user to
+    // pause before restoring baseline styles and fitting the font again.
+    const remaining=current.dyslexiaFont?160-(Date.now()-lastScrollAt):0;
+    if (remaining>0) { timer=setTimeout(runRefresh,remaining); return; }
+    apply(current);
+  }
+  function refresh() { clearTimeout(timer); timer = setTimeout(runRefresh, 80); }
+  function scrolled() { if (current?.dyslexiaFont) lastScrollAt=Date.now(); }
   const hasDyslexiaFont = el => el?.style?.fontFamily.includes('UAW OpenDyslexic');
   const observer = new MutationObserver(records => {
     if (records.some(record => !host?.contains(record.target) && (
@@ -153,11 +172,12 @@ export function createContentEngine({ root = document.body, host, nonce, styleRo
     if (!current?.dyslexiaFont || changed) refresh();
   }
   window.addEventListener('resize', resize);
+  window.addEventListener('scroll', scrolled, {passive:true});
   return {
     apply, refresh,
     destroy() {
       current=null;
-      clearTimeout(timer); observer.disconnect(); window.removeEventListener('resize', resize); restore(); stylesheet.remove();
+      clearTimeout(timer); observer.disconnect(); window.removeEventListener('resize', resize); window.removeEventListener('scroll', scrolled); restore(); stylesheet.remove();
       for (const [el, previous] of scopes) previous === null ? el.removeAttribute('data-uaw-scope') : el.setAttribute('data-uaw-scope', previous);
       scopes.clear();
     },

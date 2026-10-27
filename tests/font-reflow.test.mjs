@@ -224,3 +224,42 @@ test('dyslexia ignores scroll-driven changes and preserves position through nece
     assert.doesNotMatch(doc.querySelector('[data-uaw-style]').textContent,/overflow-anchor:none/);
   }finally{engine.destroy();w.close();for(const [key,value] of Object.entries(previous)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
 });
+
+test('dyslexia waits for page scrolling to pause and corrects layout clamping without smooth scrolling',async()=>{
+  const dom=new JSDOM('<html style="scroll-behavior:smooth"><body><main><p style="font-size:16px;line-height:24px">Reading content</p><div id="late"></div></main><div id="widget" data-uaw-ignore></div></body></html>',{pretendToBeVisual:true});
+  const w=dom.window,doc=w.document,previous={};
+  for(const key of ['window','document','HTMLElement','MutationObserver','getComputedStyle']){previous[key]=globalThis[key];globalThis[key]=key==='getComputedStyle'?w.getComputedStyle.bind(w):w[key];}
+  const scroller=doc.documentElement,corrections=[];
+  let clamp=false,writes=0;
+  w.HTMLElement.prototype.getClientRects=()=>[{width:400,height:24}];
+  w.HTMLElement.prototype.getBoundingClientRect=()=>({width:400,height:24,top:0,bottom:24});
+  scroller.scrollTo=options=>{corrections.push(options);scroller.scrollLeft=options.left;scroller.scrollTop=options.top;};
+  const paragraph=doc.querySelector('p'),setProperty=paragraph.style.setProperty.bind(paragraph.style);
+  const removeProperty=paragraph.style.removeProperty.bind(paragraph.style);
+  paragraph.style.setProperty=(...args)=>{if(args[0]==='font-family')writes++;return setProperty(...args);};
+  paragraph.style.removeProperty=property=>{
+    const original=removeProperty(property);
+    // Model a shorter baseline page clamping the browser's scroll position.
+    if(clamp&&property==='font-family'){scroller.scrollTop=0;clamp=false;}
+    return original;
+  };
+  const engine=createContentEngine({host:doc.querySelector('#widget')});
+  try{
+    engine.apply({...DEFAULT_SETTINGS,dyslexiaFont:true});
+    const before=writes;
+    scroller.scrollTop=1200;clamp=true;
+    w.dispatchEvent(new w.Event('scroll'));
+    doc.querySelector('#late').innerHTML='<p>Lazy-loaded reading content</p>';
+    await new Promise(resolve=>setTimeout(resolve,100));
+    assert.equal(writes,before,'new content must not refit existing text during a scroll');
+    scroller.scrollTop=1500;w.dispatchEvent(new w.Event('scroll'));
+    await new Promise(resolve=>setTimeout(resolve,100));
+    assert.equal(writes,before,'continued scrolling postpones the refit');
+    await new Promise(resolve=>setTimeout(resolve,140));
+    assert.ok(writes>before,'new content receives the font after scrolling pauses');
+    assert.match(doc.querySelector('#late p').style.fontFamily,/OpenDyslexic/);
+    assert.equal(scroller.scrollTop,1500,'correction uses the latest reading position');
+    assert.deepEqual(corrections,[{left:0,top:1500,behavior:'instant'}],'a smooth host page must not animate the correction');
+    assert.equal(scroller.style.scrollBehavior,'smooth','the host scroll preference is preserved');
+  }finally{engine.destroy();w.close();for(const [key,value] of Object.entries(previous)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
+});
