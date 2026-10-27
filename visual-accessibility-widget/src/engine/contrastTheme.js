@@ -2,8 +2,8 @@ const IGNORE='script,style,link,noscript,img,picture,svg,canvas,video,audio,ifra
 const BUTTON='button,input[type="button"],input[type="submit"],input[type="reset"],[role="button"],a.button';
 const LINK='a[href],[role="link"]';
 const PALETTES={
-  dark:{background:'#101827',text:'#e8eef9',link:'#9db8ff',border:'#93a4bd'},
-  contrast:{background:'#000000',text:'#ffffff',link:'#ffff00',border:'#ffffff'},
+  dark:{background:'#101827',text:'#e8eef9',link:'#9db8ff',border:'#93a4bd',photoOverlay:'rgba(16,24,39,.72)'},
+  contrast:{background:'#000000',text:'#ffffff',link:'#ffff00',border:'#ffffff',photoOverlay:'rgba(0,0,0,.8)'},
 };
 
 export function contrastThemeCss(scope,text,theme) {
@@ -25,7 +25,15 @@ export function applyContrastTheme(elements,theme,override) {
     return {el,image:css.backgroundImage,clip:css.backgroundClip||css.getPropertyValue('-webkit-background-clip'),
       opacity:Number.parseFloat(css.opacity),blend:css.mixBlendMode};
   });
-  for(const {el,image,clip,opacity,blend} of snapshots){
+  // Track CSS photo backgrounds so text nested inside them keeps a readable
+  // dark outline while the photograph itself remains visible through the tint.
+  const photoBackgrounds=new Set(snapshots.filter(({image,clip})=>image.includes('url(')&&clip!=='text').map(({el})=>el));
+  for(const snapshot of snapshots){
+    let ancestor=snapshot.el;
+    while(ancestor&&!photoBackgrounds.has(ancestor))ancestor=ancestor.parentElement;
+    snapshot.photoBackground=ancestor;
+  }
+  for(const {el,image,clip,opacity,blend,photoBackground} of snapshots){
     const button=el.closest(BUTTON),link=!button&&el.closest(LINK);
     const foreground=link?palette.link:palette.text;
     // Inline importance beats host utility rules and existing inline !important
@@ -34,13 +42,14 @@ export function applyContrastTheme(elements,theme,override) {
     override(el,'-webkit-text-fill-color',foreground);
     override(el,'background-color',palette.background);
     override(el,'border-color',palette.border);
-    override(el,'text-shadow','none');
+    override(el,'text-shadow',photoBackground&&el.textContent.trim()?'0 1px 2px rgba(0,0,0,.96),0 0 8px rgba(0,0,0,.8)':'none');
     override(el,'-webkit-text-stroke-width','0px');
     if(image&&image!=='none'){
-      const directText=[...el.childNodes].some(node=>node.nodeType===3&&node.textContent.trim());
-      // Keep photographs; add a dark backing where text is painted over them.
+      const hasText=!!el.textContent.trim();
+      // Keep photographs visible while tinting them enough to support readable
+      // light text in dark and high-contrast themes.
       const picture=image.includes('url(')&&clip!=='text';
-      override(el,'background-image',picture?(directText?`linear-gradient(${palette.background}f2,${palette.background}f2),${image}`:image):'none');
+      override(el,'background-image',picture?(hasText?`linear-gradient(${palette.photoOverlay},${palette.photoOverlay}),${image}`:image):'none');
     }
     if(clip==='text'){
       override(el,'background-clip','border-box');

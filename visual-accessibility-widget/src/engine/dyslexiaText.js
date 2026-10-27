@@ -2,6 +2,7 @@ const ICON = '[data-uaw-icon],[data-uaw-icon] *,[role="img"],[role="img"] *,svg,
 const ICON_FONT = /unicons?|font\s*awesome|material\s*(icons|symbols)|icomoon|glyphicons|bootstrap-icons/i;
 const FAMILY = '"UAW OpenDyslexic", sans-serif';
 const HEADING = 'h1,h2,h3,h4,h5,h6,[role="heading"]';
+const NAV_CONTROL = 'nav a,nav button,nav [role="button"],[role="navigation"] a,[role="navigation"] button,[role="navigation"] [role="button"]';
 
 function visibleText(el) {
   if (el.closest('[hidden]') || !el.getClientRects().length) return false;
@@ -62,15 +63,16 @@ export function applyDyslexiaText(elements, override) {
   }
   const groups = new Map();
   for (const record of records) {
-    const target = record.heading || (record.size > 24 ? largeTextContainer(record.el) : null);
+    const navigation = record.el.closest(NAV_CONTROL);
+    const target = record.heading || navigation || (record.size > 24 ? largeTextContainer(record.el) : null);
     if (!target) continue;
-    if (!groups.has(target)) groups.set(target, {el:target, records:[], original:0, replacement:0});
+    if (!groups.has(target)) groups.set(target, {el:target, navigation:!!navigation, records:[], original:0, replacement:0});
     groups.get(target).records.push(record);
   }
   for (const [target, group] of groups) {
     const largest = Math.max(...group.records.map(record => record.size));
-    if (!(largest > 24)) { groups.delete(target); continue; }
-    group.minimum = Math.min(1, 24 / largest);
+    if (!(largest > 24 || group.navigation)) { groups.delete(target); continue; }
+    group.minimum = Math.min(1, (group.navigation ? 14 : 24) / largest);
     group.rect = target.getBoundingClientRect();
     group.scrollWidth = target.scrollWidth; group.scrollHeight = target.scrollHeight;
     group.textHeight = textHeight(target);
@@ -98,7 +100,8 @@ export function applyDyslexiaText(elements, override) {
   }
   function sizeText(record, scale = 1) {
     const {el, size, line} = record;
-    const fitted = Math.max(Math.min(size, 24), size * scale);
+    const floor = record.group?.navigation ? 14 : 24;
+    const fitted = Math.max(Math.min(size, floor), size * scale);
     if (Number.isFinite(fitted) && fitted > 0) override(el, 'font-size', `${fitted}px`);
     // Keep the site's line boxes. Fitting the glyphs must not add title rows.
     if (Number.isFinite(line) && line > 0) override(el, 'line-height', `${line}px`);
@@ -130,6 +133,14 @@ export function applyDyslexiaText(elements, override) {
   }
   // Canvas is an estimate; actual line wrapping, inline spans and font metrics
   // decide the final size. Batch each pass to avoid a layout per text element.
+  // Decorative tracking can make a wider font wrap even when the text itself
+  // fits. Relax it only for title and navigation boxes that actually overflow.
+  const tracked = fitGroups.filter(group => !fits(group) && group.records.some(record =>
+    (parseFloat(record.letter) || 0) > 0 || (parseFloat(record.word) || 0) > 0));
+  for (const group of tracked) for (const record of group.records) {
+    if ((parseFloat(record.letter) || 0) > 0) override(record.el, 'letter-spacing', 'normal');
+    if ((parseFloat(record.word) || 0) > 0) override(record.el, 'word-spacing', 'normal');
+  }
   const overflowing = fitGroups.filter(group => !fits(group));
   for (const group of overflowing) {
     group.high = group.scale; group.low = group.minimum;
@@ -146,6 +157,20 @@ export function applyDyslexiaText(elements, override) {
   for (const group of overflowing) {
     group.records.forEach(record => sizeText(record, group.low));
   }
+  // If the replacement still cannot fit a title at a readable size, retain
+  // the site's original title font in that box instead of covering adjacent
+  // content. The rest of the page keeps the dyslexia font.
+  for (const group of overflowing) if (!group.navigation && !fits(group)) {
+    for (const record of group.records) {
+      override(record.el, 'font-family', record.family);
+      if (Number.isFinite(record.size)) override(record.el, 'font-size', `${record.size}px`);
+      if (Number.isFinite(record.line)) override(record.el, 'line-height', `${record.line}px`);
+      override(record.el, 'letter-spacing', record.letter);
+      override(record.el, 'word-spacing', record.word);
+    }
+  }
+  const overflowingNavigation = overflowing.filter(group => group.navigation && !fits(group))
+    .map(group => group.el.closest('nav,[role="navigation"]')).filter(Boolean);
   // Fixed-height text boxes may need another line with a wider font. Expand only
   // overflowing normal-flow boxes, preserving intentionally clipped/scrolling UI.
   const boxes = new Set(records.flatMap(({el}) => [el, el.parentElement]).filter(Boolean));
@@ -159,4 +184,5 @@ export function applyDyslexiaText(elements, override) {
     override(el, 'height', 'auto');
     override(el, 'max-height', 'none');
   }
+  return [...new Set(overflowingNavigation)];
 }

@@ -1,0 +1,40 @@
+@font-face {
+  font-family: 'A11yease Brand';
+  src: url('./assets/fonts/InterVariable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* One wordmark treatment for the website and the embeddable widget. */
+.ae-wordmark,
+.brand > .ae-wordmark,
+.lab-brand > .ae-wordmark {
+  display: inline-block;
+  max-width: 100%;
+  color: #102447;
+  font-family: 'A11yease Brand', Inter, Arial, sans-serif;
+  font-size: 1em;
+  font-style: normal;
+  font-weight: 800;
+  font-optical-sizing: auto;
+  letter-spacing: -.045em;
+  line-height: 1.15;
+  white-space: nowrap;
+  vertical-align: baseline;
+  -webkit-font-smoothing: antialiased;
+}
+.ae-wordmark > .ae-wordmark-start,
+.ae-wordmark > .ae-wordmark-end {
+  color: #102447;
+  font: inherit;
+  letter-spacing: inherit;
+  vertical-align: baseline;
+}
+.ae-wordmark > .ae-wordmark-end { color: #2457C5; }
+
+@media (forced-colors: active) {
+  .ae-wordmark,
+  .ae-wordmark > .ae-wordmark-start,
+  .ae-wordmark > .ae-wordmark-end { color: CanvasText; }
+}

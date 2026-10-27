@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { createContentEngine } from '../visual-accessibility-widget/src/engine/contentEngine.js';
 import { createReadingEngine } from '../visual-accessibility-widget/src/engine/readingEngine.js';
 import { DEFAULT_SETTINGS, SPACING_PRESETS, normalizeSettings } from '../visual-accessibility-widget/src/engine/preferenceStore.js';
@@ -20,6 +20,7 @@ import { FORM_STYLES, CONFIRM_STYLES } from '../AssistAccess/src/accessibility/p
 import { summarize, validateImport } from './helpers.js';
 import css from './team.css?inline';
 import themeCss from '../dist/ui-theme.css?inline';
+import brandCss from '../dist/brand.css?inline';
 import categorizedCss from './settingsLayout.css?inline';
 import { createSettingsLayout } from './settingsLayout.js';
 import DemoForms from './DemoForms.jsx';
@@ -127,14 +128,21 @@ function changeTool(key, value) {
   tools={...tools,[key]:value}; persist(); ui?.(); base.refresh();
   base.status(`${toolCards.find(card=>card[0]===key)?.[1]||({liveCaptions:'Live Captions',simplifiedNav:'Simplify Navigation','alt-text':'Image alternative text'})[key]||key} ${value?'enabled':'disabled'}.`);
 }
-function resetTeam() {
-  additional={...DEFAULT_ADDITIONAL};
-  changeVisual({...DEFAULT_SETTINGS},'All visual settings reset.');
-  tools={...toolsDefault}; persist(); ui?.();
-  navin?.actions.resetScope('all');
-  // These module defaults are enabled, but Reset all must leave every visible toggle off.
-  navin?.actions.setReader('auditEnabled',false);
-  navin?.actions.setForms('passwordToggle',false);
+function resetTeam({persistImmediately=false}={}) {
+  const resetControls=()=>{
+    additional={...DEFAULT_ADDITIONAL};
+    changeVisual({...DEFAULT_SETTINGS},'All visual settings reset.');
+    tools={...toolsDefault}; persist(); ui?.();
+    navin?.actions.resetScope('all');
+    // These module defaults are enabled, but Reset all must leave every visible toggle off.
+    navin?.actions.setReader('auditEnabled',false);
+    navin?.actions.setForms('passwordToggle',false);
+  };
+  if(persistImmediately){
+    // Commit the reset before saveNow reads the provider and the page reloads.
+    flushSync(resetControls);
+    navin?.actions.saveNow();
+  }else resetControls();
 }
 function restoreSnapshot(settings) {
   // Each module validates its own values. Imported data cannot start voice input.
@@ -316,7 +324,7 @@ function Preferences() {
   const [message,setMessage]=useState(''), [profileName,setProfileName]=useState(''), [profiles,setProfiles]=useState(()=>{
     try{const value=JSON.parse(localStorage.getItem('accessease.team.profiles.v2')||'[]');return Array.isArray(value)?value.slice(0,10).filter(item=>typeof item.name==='string'&&item.settings):[];}catch{return [];}
   });
-  function exportSettings(){const link=document.createElement('a');const url=URL.createObjectURL(new Blob([JSON.stringify({kind:'accessease-preferences',version:2,settings:snapshot()},null,2)],{type:'application/json'}));link.href=url;link.download='accessease-preferences.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setMessage('Preferences exported. No page input values are included.');}
+  function exportSettings(){const link=document.createElement('a');const url=URL.createObjectURL(new Blob([JSON.stringify({kind:'accessease-preferences',version:2,settings:snapshot()},null,2)],{type:'application/json'}));link.href=url;link.download='a11yease-preferences.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setMessage('Preferences exported. No page input values are included.');}
   async function importSettings(event){const file=event.target.files?.[0];if(!file)return;try{if(file.size>100000)throw new Error('Preferences file must be smaller than 100 KB.');restoreSnapshot(validateImport(JSON.parse(await file.text())));setMessage('Preferences imported for all features.');}catch(error){setMessage(error.message);}event.target.value='';}
   function builtIn(id){base.reset();if(id==='reading'){changeVisual({...SPACING_PRESETS.comfortable,spacingPreset:'comfortable',dyslexiaFont:true});base.setSettings({focus:true});}if(id==='lowMotion'){navin.actions.applyProfile({id:'reducedMotion',label:'Reduced motion',patch:{motion:{reduceMotion:'on',pauseAnimations:true,pauseAutoMedia:true}}});}if(id==='contrast'){changeVisual({theme:'contrast'});base.setSettings({focus:true,targets:true});}}
   function saveProfile(){const name=profileName.trim().slice(0,50);if(!name)return;const next=[...profiles.filter(profile=>profile.name!==name),{name,settings:snapshot()}].slice(-10);setProfiles(next);try{localStorage.setItem('accessease.team.profiles.v2',JSON.stringify(next));setMessage('Profile saved.');}catch{setMessage('Profile is available for this visit; browser storage is unavailable.');}setProfileName('');}
@@ -421,7 +429,11 @@ if(base&&!base.host.dataset.teamReady){
   // Full-viewport click-through host also keeps fixed controls stable under page filters.
   Object.assign(base.host.style,{position:'fixed',inset:'0',pointerEvents:'none',zIndex:'2147483647'});
   setToolbarHost(base.host);
-  const style=document.createElement('style');style.textContent=getStylesText()+FORM_STYLES+CONFIRM_STYLES+css+themeCss+categorizedCss+languageCss+widgetThemeCss;base.root.append(style);
+  // Font faces must be registered in the document for use inside a shadow root.
+  if(!document.querySelector('[data-a11yease-brand-style]')){
+    const brandStyle=document.createElement('style');brandStyle.dataset.a11yeaseBrandStyle='';brandStyle.textContent=brandCss;document.head.append(brandStyle);
+  }
+  const style=document.createElement('style');style.textContent=getStylesText()+FORM_STYLES+CONFIRM_STYLES+css+themeCss+categorizedCss+languageCss+widgetThemeCss+brandCss;base.root.append(style);
   settingsLayout=createSettingsLayout(base);
   const mount=document.createElement('div');mount.className='team-mount';base.root.querySelector('.body').append(mount);
   const total=13+visualCards.length+toolCards.length+1+navinFeatures.length+2+3+2+additionalCards.length;

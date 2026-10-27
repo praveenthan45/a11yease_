@@ -2,7 +2,7 @@
 :host{
   --ae-bg:#F8FAFC;--ae-surface:#FFFFFF;--ae-text:#14253D;
   --ae-primary:#155EEF;--ae-buttons:#0B3970;
-  --ae-container-border:#CFE6FF;
+  --ae-container-border:#CFE6FF;--ae-header-bg:#FFFFFF;--ae-header-text:#000000;
   --ae-muted:var(--ae-text);--ae-border:var(--ae-buttons);
   --ae-primary-hover:var(--ae-buttons);--ae-navy:var(--ae-buttons);--ae-tint:var(--ae-bg);
   --bg:var(--ae-bg);--surface:var(--ae-surface);--white:var(--ae-surface);
@@ -17,12 +17,12 @@
 }
 
 .panel{background:var(--ae-bg);color:var(--ae-text);border-color:var(--ae-container-border);box-shadow:none}
-.panel .top{min-height:84px;padding:16px 18px;gap:12px;background:var(--ae-buttons);color:var(--ae-surface)}
+.panel .top{min-height:84px;padding:16px 18px;gap:12px;background:var(--ae-header-bg);color:var(--ae-header-text);border-bottom:1px solid var(--ae-container-border)}
 .panel .top h2{font-size:26px;line-height:1.2;letter-spacing:-.4px}
-.panel .top p{color:var(--ae-surface);font-size:12px;line-height:1.5}
+.panel .top p{color:var(--ae-header-text);font-size:12px;line-height:1.5}
 .panel .top .logo{width:40px;height:40px}
-.panel .close{width:44px;height:44px;min-width:44px;min-height:44px;border-color:var(--ae-surface);color:var(--ae-surface);background:transparent}
-.panel .close:hover{background:var(--ae-primary)}
+.panel .close{width:44px;height:44px;min-width:44px;min-height:44px;border-color:var(--ae-header-text);color:var(--ae-header-text);background:transparent}
+.panel .close:hover{background:var(--ae-bg)}
 .panel .panel-toolbar{padding:12px 18px;background:var(--ae-bg)}
 .panel .panel-toolbar .team-search input{background:var(--ae-surface);border:1px solid var(--ae-container-border);color:var(--ae-text);font-size:14px;box-shadow:none}
 .panel .panel-toolbar .team-search input::placeholder{color:var(--ae-text);opacity:1}
@@ -128,7 +128,8 @@
 .panel .reset:hover{background:var(--ae-primary);border-color:var(--ae-primary);color:var(--ae-surface)}
 .panel :is(button,input,select,textarea,summary,a[href]):focus-visible{outline:3px solid var(--ae-primary);outline-offset:2px;box-shadow:none}
 .panel .category-toggle:focus-visible{outline-offset:-3px}
-.panel .top button:focus-visible,.panel .panel-language-list button[aria-selected=true]:focus-visible{outline-color:var(--ae-surface);outline-offset:-4px}
+.panel .top button:focus-visible{outline-color:var(--ae-header-text);outline-offset:-4px}
+.panel .panel-language-list button[aria-selected=true]:focus-visible{outline-color:var(--ae-surface);outline-offset:-4px}
 .panel a[href]{color:var(--ae-primary);text-decoration:underline;text-underline-offset:3px}
 .panel :is(dialog,.a11ytb-dialog){background:var(--ae-surface);color:var(--ae-text);border-color:var(--ae-container-border);box-shadow:none}
 .panel .a11ytb-form__error{color:var(--ae-text)}

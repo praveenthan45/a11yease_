@@ -1,8 +1,15 @@
 const reloaded=performance.getEntriesByType?.('navigation')?.[0]?.type==='reload';
-if(reloaded&&(location.pathname!=='/'||location.search||location.hash)){
+const resetReload=(()=>{
+  try{
+    const key='accessease.reset.reload.v1',saved=JSON.parse(sessionStorage.getItem(key)||'null');
+    sessionStorage.removeItem(key);
+    return saved?.href===location.href&&Number.isFinite(saved.expiresAt)&&saved.expiresAt>Date.now();
+  }catch{return false;}
+})();
+if(reloaded&&!resetReload&&(location.pathname!=='/'||location.search||location.hash)){
   location.replace('/');
 }else{
-  if(reloaded){
+  if(reloaded&&!resetReload){
     history.scrollRestoration='manual';
     window.addEventListener('pageshow',()=>window.scrollTo(0,0),{once:true});
   }

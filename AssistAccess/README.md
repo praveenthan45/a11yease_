@@ -1,6 +1,6 @@
 # AssistAccess accessibility toolbar
 
-React 18 accessibility toolbar with a demo site, host integration harness, and optional server-backed image alt-text workflow. The widget offers 14 feature groups. This project is independent of the AccessEase demo at the repository root.
+React 18 accessibility toolbar with a demo site, host integration harness, and optional server-backed image alt-text workflow. The widget offers 14 feature groups. This project is independent of the A11yease demo at the repository root.
 
 ## Run locally
 

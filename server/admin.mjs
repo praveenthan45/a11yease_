@@ -16,7 +16,7 @@ const sessions = new Map(), attempts = new Map();
 const cookieName = 'ae_admin_session';
 const sessionTtlMs = Math.max(100, Number(process.env.SESSION_TTL_MS) || 8 * 60 * 60 * 1000);
 const digest = token => createHash('sha256').update(token).digest('hex');
-const publicFiles = new Set(['/login.html','/login.css','/login.js','/ui-theme.css','/widget.js','/embed.js','/team-features.js','/accessibility-badge.png','/brand-logo-transparent.png','/OpenDyslexic-OFL.txt','/favicon.ico']);
+const publicFiles = new Set(['/login.html','/login.css','/login.js','/ui-theme.css','/brand.css','/widget.js','/embed.js','/team-features.js','/accessibility-badge.png','/brand-logo-transparent.png','/OpenDyslexic-OFL.txt','/favicon.ico']);
 const mime = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.mp4':'video/mp4','.vtt':'text/vtt; charset=utf-8','.woff2':'font/woff2','.ttf':'font/ttf'};
 let verifications = 0;
 function headers(res) {
@@ -140,4 +140,4 @@ const server=http.createServer(async(req,res)=>{
 });
 server.requestTimeout=15000;server.headersTimeout=10000;
 setInterval(()=>{const now=Date.now();for(const [key,value]of attempts)if(now-value.since>900000)attempts.delete(key);for(const [key,value]of sessions)if(now-value.createdAt>=sessionTtlMs)sessions.delete(key);},60000).unref();
-server.listen(Number(process.env.PORT||1434),process.env.BIND_HOST||'127.0.0.1',()=>console.log(`AccessEase admin server ready on port ${server.address().port}.`));
+server.listen(Number(process.env.PORT||1434),process.env.BIND_HOST||'127.0.0.1',()=>console.log(`A11yease admin server ready on port ${server.address().port}.`));

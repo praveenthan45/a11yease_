@@ -6,13 +6,13 @@ from Render, follow [the VPS deployment guide](deploy/vps/DEPLOY.md).
 ## cPanel testing deployment
 
 The payment-free testing release can be packaged with `npm run package:cpanel`.
-Upload `release/AccessEase-cPanel.zip` using the instructions in
+Upload `release/A11yease-cPanel.zip` using the instructions in
 [deploy/cpanel/DEPLOY.md](deploy/cpanel/DEPLOY.md). The ZIP excludes credentials
 and account data. Node 22/24, HTTPS, private persistent storage and a single app
 worker are required. `npm run test:server` runs isolated HTTP integration checks;
 it needs permission to connect to its temporary localhost server.
 
-# AccessEase — unified team widget
+# A11yease — unified team widget
 
 The Docker demo now combines all four developers' modules in **one launcher and one searchable panel with 61 controls**. Reset, preference import/export and saved profiles cover the combined settings. The original projects remain available for development; the demo does not load their separate launchers.
 
@@ -130,7 +130,7 @@ The repository retains the original projects alongside the unified build:
 
 - **Visual Accessibility Widget (React + Vite):** the new project is in [`visual-accessibility-widget/`](visual-accessibility-widget/). It includes a live website demo, a standalone embeddable SDK, text sizing, appearance settings, color vision assistance and reading tools. See its [English setup and integration guide](visual-accessibility-widget/README.md).
 - **Sudhin Standalone Widget:** the standalone script is `accessibility-widget.js`, with its demo in `demo.html`. See [Sudhin setup and feature guide](SUDHIN.md) and [standalone distribution](standalone-widget/README.md).
-- **AccessEase:** the existing static demo and Docker setup remain in the repository root. Its instructions are retained below.
+- **A11yease:** the existing static demo and Docker setup remain in the repository root. Its instructions are retained below.
 
 To start the Visual Accessibility Widget:
 
@@ -142,9 +142,9 @@ npm run dev
 
 ---
 
-# AccessEase
+# A11yease
 
-The separately developed React accessibility toolbar is in [AssistAccess/](AssistAccess/README.md), with its [project audit](AssistAccess/PROJECT-AUDIT.md). The instructions below describe the original static AccessEase demo served by this repository's Docker setup.
+The separately developed React accessibility toolbar is in [AssistAccess/](AssistAccess/README.md), with its [project audit](AssistAccess/PROJECT-AUDIT.md). The instructions below describe the original static A11yease demo served by this repository's Docker setup.
 
 A sample learning website with a reusable accessibility widget offering 13 settings. Open `dist/index.html` through a local static HTTP server. The floating button stays in the bottom right corner.
 

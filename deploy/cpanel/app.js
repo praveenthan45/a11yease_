@@ -2,6 +2,6 @@
 process.env.NODE_ENV ||= 'production';
 process.env.COOKIE_SECURE ||= 'true';
 import('./server/admin.mjs').catch(error => {
-  console.error('AccessEase could not start:', error.message);
+  console.error('A11yease could not start:', error.message);
   process.exit(1);
 });

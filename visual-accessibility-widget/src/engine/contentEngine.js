@@ -126,7 +126,8 @@ export function createContentEngine({ root = document.body, host, nonce, styleRo
     if(settings.fontScale>1 || settings.spacingPreset!=='default')reflowText(elements,override);
     if(settings.dyslexiaFont){
       if(dyslexiaReady){
-        applyDyslexiaText(elements,override);
+        const overflowingNavigation=applyDyslexiaText(elements,override);
+        if(overflowingNavigation.length)reflowText(elements,override,{compactNavigation:true,headersOnly:true,onlyNavigation:new Set(overflowingNavigation)});
         root.getBoundingClientRect();stylesheet.textContent=css;
       }
       else if(!dyslexiaLoading&&document.fonts){

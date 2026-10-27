@@ -9,7 +9,7 @@ Copy-Item -LiteralPath (Join-Path $projectDirectory 'server') -Destination $stag
 foreach ($name in @('app.js', 'package.json', 'DEPLOY.md')) {
     Copy-Item -LiteralPath (Join-Path $projectDirectory "deploy/cpanel/$name") -Destination $stagingDirectory
 }
-$archivePath = Join-Path $releaseDirectory 'AccessEase-cPanel.zip'
+$archivePath = Join-Path $releaseDirectory 'A11yease-cPanel.zip'
 Compress-Archive -Path (Join-Path $stagingDirectory '*') -DestinationPath $archivePath -Force
 # Delete only this verified, generated staging directory.
 $resolvedStaging = [IO.Path]::GetFullPath($stagingDirectory)

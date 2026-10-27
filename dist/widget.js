@@ -35,8 +35,9 @@
   @media(max-width:540px),(max-height:540px){.panel .top{min-height:52px;padding:4px 12px;gap:8px}.panel .top .logo{width:32px;height:32px}.panel .top h2{font-size:20px;margin:0}.panel .top p,.panel .intro,.panel .footnote{display:none}.panel .close{width:44px;height:44px}.panel .footer{padding:6px 12px calc(6px + env(safe-area-inset-bottom,0px))}.panel .footer-actions{align-items:center;gap:10px}.panel .reset{min-height:44px}.panel .status{max-height:32px}}
   @container(max-width:540px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.top,.intro,.footer{padding-left:20px;padding-right:20px}.body{padding-left:20px;padding-right:20px}.tile,.select-row{padding:10px}.tile strong,.select-row label{font-size:12px}.footer-actions{gap:10px}.status{min-width:0;font-size:11px}.reset{min-width:120px;font-size:11px}}
   @container(max-width:400px){.top{gap:10px;padding-top:15px;padding-bottom:15px}.top .logo{width:35px;height:35px}.top h2{font-size:20px;margin:0}.top p{display:none}.intro{gap:5px;padding-top:10px;padding-bottom:10px;font-size:12px}.tile small{font-size:10px}.footer{padding-top:10px;padding-bottom:10px}.footnote{font-size:9px}}
+  .panel .top{background:#FFFFFF;color:#000000}.panel .top h2,.panel .top p,.panel .close{color:#000000}.panel .close{border-color:#000000}.panel .close:hover{background:#F8FAFC}
   </style><button class="skip" hidden>Skip to main content</button><div class="hint">Make this page yours <span aria-hidden="true">↘</span></div><button class="launcher" aria-label="Open accessibility settings" aria-expanded="false" aria-controls="ae-panel"><img class="badge launcher-badge" src="${badgeURL}" alt="" aria-hidden="true"></button>
-  <section class="panel" id="ae-panel" aria-label="Accessibility settings" hidden><div class="top"><div class="logo">${symbol}</div><div><h2>AccessEase</h2><p>Your page. Your pace. Your preferences.</p></div><button class="close" aria-label="Close accessibility settings">×</button></div><div class="intro" hidden><span class="intro-summary" hidden><span class="total">13 settings</span><span class="count">0 active</span></span></div><div class="body"><div class="grid">
+  <section class="panel" id="ae-panel" aria-label="Accessibility settings" hidden><div class="top"><div class="logo">${symbol}</div><div><h2><span class="ae-wordmark"><span class="ae-wordmark-start">A11y</span><span class="ae-wordmark-end">Ease</span></span></h2><p>Your page. Your pace. Your preferences.</p></div><button class="close" aria-label="Close accessibility settings">×</button></div><div class="intro" hidden><span class="intro-summary" hidden><span class="total">13 settings</span><span class="count">0 active</span></span></div><div class="body"><div class="grid">
   ${tile('speech','speech','Text to Speech','Drag to highlight the text you want to hear')}${tile('simple','simple','Simplified Text Mode','Use clearer wording across the page')}
   <div class="select-row"><label for="rate"><span class="icon" aria-hidden="true">${settingIcon('rate')}</span>Adjustable Reading Speed<small>Speed of the voice reader</small></label><select id="rate"><option value="0.75">0.75× · Slower</option><option value="1">1× · Normal</option><option value="1.1">1.1× · Slightly faster</option><option value="1.25">1.25×</option><option value="1.5">1.5× · Faster</option></select></div>
   <div class="select-row"><label for="align"><span class="icon" aria-hidden="true">${settingIcon('align')}</span>Text Alignment<small>Adjust all page text</small></label><select id="align"><option value="original">Original</option><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="justify">Justify</option></select></div>
@@ -44,7 +45,7 @@
   ${tile('focus','focus','Visible Keyboard Focus','Make the focused control stand out')}${tile('skip','skip','Skip to Main Content','Add a skip link · Press Tab')}${tile('targets','targets','Large Click Targets','Give buttons and links more space')}
   ${tile('voice','voice','Voice Command','Speak commands · Microphone needed')}${tile('switches','switches','Switch Device Support','Space: next · Enter: select')}${tile('sticky','sticky','Sticky Keys Compatibility','Sequential Ctrl, Alt, A shortcut')}
   ${tile('captions','captions','Closed Captions','Show available video subtitle tracks')}
-  </div></div><div class="footer"><div class="footer-actions"><p class="status" role="status" aria-live="polite">Your preferences are saved in this browser.</p><button class="reset">↺ &nbsp; Reset all settings</button></div><p class="footnote">Ctrl + Alt + A to open · Escape to close</p></div></section>`;
+  </div></div><div class="footer"><div class="footer-actions"><p class="status" role="status" aria-live="polite">Your preferences are saved in this browser.</p><button class="reset">↺ &nbsp; Reset all settings</button></div><p class="powered-by" style="margin:10px 0 0;text-align:center;font-size:10px;line-height:1.5;color:var(--muted)">Powered by <a href="https://www.gentizeinnovations.com/" target="_blank" rel="noopener noreferrer" style="color:var(--blue);text-decoration:underline">Gentize Innovations</a></p></div></section>`;
   function settingIcon(name){
     const paths={speech:'<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14"/>',simple:'<path d="m3 19 6-14 6 14M5 14h8M17 10h4M19 10v9"/>',rate:'<path d="M4 18a9 9 0 1 1 16 0M12 13l4-5"/><circle cx="12" cy="13" r="1"/>',align:'<path d="M3 5h18M3 10h12M3 15h18M3 20h12"/>',highlight:'<path d="m14 4 6 6-8 8H6v-6l8-8ZM3 21h18"/>',keyboard:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h1m3 0h1m3 0h1m3 0h1M6 13h1m3 0h1m3 0h1m3 0h1M7 16h10"/>',focus:'<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><circle cx="12" cy="12" r="3"/>',skip:'<path d="M5 3v12a3 3 0 0 0 3 3h11m-4-4 4 4-4 4"/>',targets:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/>',voice:'<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>',switches:'<path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/>',sticky:'<path d="M9 7V5a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v14a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V7Z"/>',captions:'<rect x="2" y="4" width="20" height="16" rx="3"/><path d="M10 9a3 3 0 1 0 0 6M18 9a3 3 0 1 0 0 6"/>'};
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.focus}</svg>`;
@@ -587,8 +588,16 @@
     if(scanned.tabIndex<0&&!scanned.hasAttribute('tabindex'))scanned.setAttribute('tabindex','-1');
     scanned.setAttribute('data-ae-scanned','');scanned.focus({preventScroll:true});scanned.scrollIntoView?.({block:'nearest',inline:'nearest',behavior:'auto'});
   }
-  function reset(){voiceRequested=false;stopSpeech();stopVoice();clearScan();latched.clear();selectedReadingText='';sentences=[];Object.assign(state,defaults);teamExtension?.reset();apply();status('All settings have been reset.');}
-  root.querySelector('.reset').addEventListener('click',reset);
+  function reset({reload=false}={}){
+    voiceRequested=false;stopSpeech();stopVoice();clearScan();latched.clear();selectedReadingText='';sentences=[];
+    Object.assign(state,defaults);teamExtension?.reset({persistImmediately:reload});apply();status('All settings have been reset.');
+    if(reload){
+      openPanel(false);
+      try{sessionStorage.setItem('accessease.reset.reload.v1',JSON.stringify({href:location.href,expiresAt:Date.now()+60000}));}catch{}
+      window.location.reload();
+    }
+  }
+  root.querySelector('.reset').addEventListener('click',()=>reset({reload:true}));
   root.querySelectorAll('[data-setting]').forEach(el=>el.addEventListener('click',()=>{
     const id=el.dataset.setting;
     if(id==='voice'){
@@ -701,7 +710,7 @@
   resumeVoiceNavigation();
   // Load the shared feature bundle relative to this script on any host website.
   const teamScript=document.createElement('script');
-  teamScript.src=new URL('team-features.js?v=20261026-website-only-sizing',document.currentScript.src).href;
+  teamScript.src=new URL('team-features.js?v=20261027-white-header',document.currentScript.src).href;
   teamScript.onerror=()=>status('Additional settings could not load. Check the widget asset files.');
   document.head.append(teamScript);
 })();

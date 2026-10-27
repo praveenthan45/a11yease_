@@ -5,7 +5,7 @@ const path=require('node:path');
 const {JSDOM,VirtualConsole}=require('jsdom');
 const project=path.join(__dirname,'..');
 
-async function appearanceSetup(saved={}){
+async function appearanceSetup(saved={},openPanel=true){
   const errors=[],console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
   const dom=new JSDOM('<html lang="en"><body><main><h1 style="font-size:40px">Website title</h1><p style="font-size:16px">Website content</p></main></body></html>',{url:'http://localhost:1434/',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console});
   const w=dom.window,settle=()=>new Promise(resolve=>setTimeout(resolve,100));
@@ -19,9 +19,54 @@ async function appearanceSetup(saved={}){
   for(const file of ['widget.js','team-features.js'])w.eval(fs.readFileSync(path.join(project,'dist',file),'utf8'));
   for(let i=0;i<30&&!w.AccessEaseTeam;i++)await settle();
   assert.ok(w.AccessEaseTeam);await settle();
-  w.AccessEase.open();
+  if(openPanel)w.AccessEase.open();
   return {w,root:w.AccessEase.root,settle,errors};
 }
+
+test('Reset all closes the panel and saves cleared preferences before reloading the website',async()=>{
+  const t=await appearanceSetup();let saved;
+  try{
+    t.w.localStorage.setItem('website-preference','keep');
+    t.w.AccessEaseTeam.setSettings({
+      base:{align:'center',focus:true,sticky:true},
+      visual:{theme:'dark',fontScale:1.4,dyslexiaFont:true},
+      tools:{progress:true},additional:{cognitiveDisability:true,cursor:'dark'},
+      assist:{visual:{enabled:true,brightness:125},motion:{pauseAnimations:true},reader:{auditEnabled:true},forms:{passwordToggle:true}},
+    });
+    await t.settle();
+    assert.notEqual(t.root.querySelector('.count').textContent,'0 active');
+    t.w.history.replaceState(null,'','/learning-demo.html?course=2#reading');
+    const currentURL=t.w.location.href;
+    t.w.sessionStorage.setItem('accessease.voice.navigation.v1',JSON.stringify({origin:t.w.location.origin,expiresAt:Date.now()+300000}));
+    t.root.querySelector('.reset').click();
+    assert.equal(t.root.querySelector('.panel').hidden,true);
+    assert.equal(t.root.querySelector('.launcher').getAttribute('aria-expanded'),'false');
+    assert.equal(t.root.querySelector('.count').textContent,'0 active');
+    // jsdom reports the reload request instead of performing browser navigation.
+    assert.deepEqual(t.errors,['Not implemented: navigation (except hash changes)']);
+    assert.equal(t.w.location.href,currentURL);
+    assert.equal(JSON.parse(t.w.sessionStorage.getItem('accessease.reset.reload.v1')).href,currentURL);
+    assert.equal(t.w.sessionStorage.getItem('accessease.voice.navigation.v1'),null);
+    const assist=JSON.parse(t.w.localStorage.getItem('accessease.team.assist.v2.settings'));
+    assert.equal(assist.visual.enabled,false);
+    assert.equal(assist.motion.pauseAnimations,false);
+    assert.equal(assist.reader.auditEnabled,false);
+    assert.equal(assist.forms.passwordToggle,false);
+    saved=Object.fromEntries(Array.from({length:t.w.localStorage.length},(_,i)=>t.w.localStorage.key(i)).map(key=>[key,t.w.localStorage.getItem(key)]));
+  }finally{t.w.close();}
+  const reopened=await appearanceSetup(saved,false);
+  try{
+    assert.equal(reopened.root.querySelector('.panel').hidden,true);
+    assert.equal(reopened.root.querySelector('.count').textContent,'0 active');
+    assert.equal(reopened.w.AccessEase.getSettings().align,'original');
+    assert.equal(reopened.w.AccessEaseTeam.getSettings().visual.fontScale,1);
+    assert.equal(reopened.w.AccessEaseTeam.getSettings().visual.dyslexiaFont,false);
+    assert.equal(reopened.w.AccessEaseTeam.getSettings().additional.cognitiveDisability,false);
+    assert.equal(reopened.w.AccessEaseTeam.getSettings().tools.progress,false);
+    assert.equal(reopened.w.localStorage.getItem('website-preference'),'keep');
+    assert.deepEqual(reopened.errors,[]);
+  }finally{reopened.w.close();}
+});
 
 test('Brightness mode shows and persists the selected Muted preset after combining visual adjustments',async()=>{
   const t=await appearanceSetup();let saved;

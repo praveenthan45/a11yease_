@@ -26,7 +26,7 @@ export function summarize(texts) {
 export function validateImport(value) {
   if (!value || value.version !== 2 || value.kind !== 'accessease-preferences' ||
       !value.settings || typeof value.settings !== 'object' || Array.isArray(value.settings)) {
-    throw new Error('Choose an AccessEase preferences export (version 2).');
+    throw new Error('Choose an A11yease preferences export (version 2).');
   }
   return value.settings;
 }

@@ -51,6 +51,7 @@ export function createWidgetAppearance(base){
       '--ae-primary':palette.primary,'--ae-buttons':palette.buttons,'--ae-container-border':palette.border,
       '--ae-heading':heading,'--ae-on-buttons':readable('#FFFFFF',palette.buttons),
       '--ae-on-primary':readable('#FFFFFF',palette.primary),
+      '--ae-header-bg':'#FFFFFF','--ae-header-text':'#000000',
     }))token(name,value);
     const filters=[];
     if(originalFilter&&originalFilter!=='none')filters.push(originalFilter);
@@ -60,14 +61,15 @@ export function createWidgetAppearance(base){
     if(filters.length)panel.style.setProperty('filter',filters.join(' '));
     else if(originalFilter)panel.style.setProperty('filter',originalFilter,originalFilterPriority);
     else panel.style.removeProperty('filter');
-    let css=`.panel .top,.panel .top h2,.panel .top p,.panel .close,.panel .reset,.panel .reset:hover,.panel .a11ytb-button--primary{color:var(--ae-on-buttons)}
-      .panel .close{border-color:var(--ae-on-buttons)}
+    let css=`.panel .top,.panel .top h2,.panel .top p,.panel .close{color:var(--ae-header-text)}
+      .panel .reset,.panel .reset:hover,.panel .a11ytb-button--primary{color:var(--ae-on-buttons)}
+      .panel .close{border-color:var(--ae-header-text)}
       .panel .category-heading,.panel .category-controls :is(.card-title,.team-card>summary){color:var(--ae-heading)}
       .panel .category-controls .card-enable[aria-checked=true] .card-switch-thumb{background:var(--ae-on-primary)}
       .panel .category-controls .card-enable .card-switch-thumb{background:var(--ae-buttons)}
       .panel .panel-language-list button[aria-selected=true]{color:var(--ae-on-primary)}
       .panel .category-controls>.tile[aria-pressed=true]:after,.panel .speech-header>.tile[aria-pressed=true]:after,.panel .voice-setting>.tile[aria-pressed=true]:after{background:radial-gradient(circle at 27px 11px,var(--ae-on-primary) 0 8px,transparent 9px),var(--ae-primary)}
-      .panel .top button:focus-visible{outline-color:var(--ae-on-buttons)}
+      .panel .top button:focus-visible{outline-color:var(--ae-header-text)}
       .team-summary-card>header button,.team-step button,.overlay-close,.team-toast,.team-progress-label{color:var(--ae-on-buttons)}`;
     if(extra.cursor&&extra.cursor!=='default')css+=`.panel,.panel *{cursor:${cursorValue(extra.cursor)}!important}`;
     if(baseSettings.align&&baseSettings.align!=='original')css+=`.panel :is(.card-title,.category-label,.tile strong,p,label,legend,textarea){text-align:${baseSettings.align}!important}`;

@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title AccessEase - Docker
+title A11yease - Docker
 
 if not exist "%~dp0.local\admin-auth.json" (
     echo ERROR: Admin credentials are not configured. See README.md.
@@ -31,7 +31,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo AccessEase is running in Docker at http://localhost:1434/
+echo A11yease is running in Docker at http://localhost:1434/
 start "" "http://localhost:1434/"
 echo You can close this window; the Docker container keeps running.
 echo To stop it: docker compose -f "%~dp0compose.yaml" down

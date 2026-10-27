@@ -2,7 +2,7 @@
 
 **Audit date:** 10 October 2026
 
-**Scope:** the `AssistAccess/` source folder added to the `Navin` branch. The existing AccessEase website at the repository root remains a separate project.
+**Scope:** the `AssistAccess/` source folder added to the `Navin` branch. The existing A11yease website at the repository root remains a separate project.
 **Environment:** Windows, Node.js 24.11.1, npm 11.6.2, local Chrome; dependency advisories queried from the npm registry on the audit date.
 
 ## Project inventory and architecture
@@ -54,4 +54,4 @@ The first layout invocation reached a page without the widget yet returned succe
 
 ## Repository integration
 
-The `Navin` branch already contained a separate AccessEase static site and Docker setup. This upload adds AssistAccess under its own folder so the existing root site and its container behavior continue to work. The existing root tests were also run before upload: 8 sticky-key and 17 voice-command checks passed. The root Docker image serves only root `dist/`; it does not deploy AssistAccess. Build and deploy AssistAccess explicitly if it is intended to replace or accompany that site.
+The `Navin` branch already contained a separate A11yease static site and Docker setup. This upload adds AssistAccess under its own folder so the existing root site and its container behavior continue to work. The existing root tests were also run before upload: 8 sticky-key and 17 voice-command checks passed. The root Docker image serves only root `dist/`; it does not deploy AssistAccess. Build and deploy AssistAccess explicitly if it is intended to replace or accompany that site.

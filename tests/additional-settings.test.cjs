@@ -77,7 +77,7 @@ test('text, title and background swatches apply independently and reset restores
     assert.equal(t.w.document.querySelector('h1').style.color,'navy');
     assert.equal(t.w.document.querySelector('#passage').style.color,'rgb(128, 0, 0)');
     await t.toggle('highlightTitles');assert.equal(t.w.document.querySelector('h1').style.outline,'2px solid currentColor');
-    t.root.querySelector('.reset').click();await settle();
+    t.w.AccessEase.reset();await settle();
     assert.equal(t.w.document.querySelector('#passage').style.color,'rgb(20, 40, 60)');
     assert.equal(t.w.document.querySelector('#passage').style.getPropertyPriority('color'),'important');
     assert.equal(t.w.document.querySelector('h1').style.color,'navy');

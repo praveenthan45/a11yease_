@@ -1,7 +1,8 @@
 const EXCLUDE='svg,canvas,img,video,[role="img"],[data-uaw-preserve-layout],[data-uaw-preserve-layout] *,[data-uaw-chart],[data-chart],[class*="chart"],[class*="Chart"]';
-function reflowHeaders(elements,override,compactNavigation) {
+function reflowHeaders(elements,override,compactNavigation,onlyNavigation) {
   const included=new Set(elements);
   for(const nav of elements.filter(el=>el.matches('nav,[role="navigation"]'))) {
+    if(onlyNavigation && !onlyNavigation.has(nav))continue;
     const header=nav.closest('header,[role="banner"]');
     if(!header || !included.has(header) || header.matches(EXCLUDE) || nav.matches(EXCLUDE) || !nav.getClientRects().length) continue;
     const headerStyle=getComputedStyle(header), navStyle=getComputedStyle(nav);
@@ -44,8 +45,9 @@ function reflowHeaders(elements,override,compactNavigation) {
     }
   }
 }
-export function reflowText(elements,override,{compactNavigation=false}={}) {
-  reflowHeaders(elements,override,compactNavigation);
+export function reflowText(elements,override,{compactNavigation=false,headersOnly=false,onlyNavigation}={}) {
+  reflowHeaders(elements,override,compactNavigation,onlyNavigation);
+  if(headersOnly)return;
   // Reflow ordinary rows while retaining scrolling/animated tracks and controls.
   const rows=elements.map(el=>({el,style:getComputedStyle(el)})).filter(({el,style})=>
     !el.matches(EXCLUDE) && style.display==='flex' && style.flexDirection==='row' &&

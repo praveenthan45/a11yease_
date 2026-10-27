@@ -40,10 +40,20 @@ export function createSettingsLayout(base) {
     const controls=document.createElement('div');controls.className='category-controls';
     controls.id=`category-${category.id}-controls`;toggle?.setAttribute('aria-controls',controls.id);
     section.append(heading,controls);grid.append(section);
-    const group={section,controls,toggle,expanded:category.id==='modes',searchExpanded:true};
+    const group={section,controls,toggle,expanded:category.id==='modes',searchExpanded:category.id==='modes'};
     toggle?.addEventListener('click',()=>{
-      if(currentQuery)group.searchExpanded=!group.searchExpanded;else group.expanded=!group.expanded;
+      const wasExpanded=currentQuery?group.searchExpanded:group.expanded;
+      for(const other of groups.values())if(other!==group){
+        if(currentQuery)other.searchExpanded=false;else other.expanded=false;
+        setExpanded(other,false);
+      }
+      if(currentQuery)group.searchExpanded=!wasExpanded;else group.expanded=!wasExpanded;
       setExpanded(group,currentQuery?group.searchExpanded:group.expanded);
+      if(currentQuery?group.searchExpanded:group.expanded)requestAnimationFrame(()=>{
+        const body=root.querySelector('.body');
+        if(!body||group.section.hidden)return;
+        body.scrollTop+=group.section.getBoundingClientRect().top-body.getBoundingClientRect().top;
+      });
     });
     setExpanded(group,group.expanded);
     groups.set(category.id,group);
@@ -73,6 +83,21 @@ export function createSettingsLayout(base) {
   });
   root.querySelector('.reset').addEventListener('click',()=>{speedExpanded=false;showSpeed();});
   showSpeed();
+  const closePreviousOptions=event=>{
+    const target=event.target instanceof Element?event.target:null;
+    if(!target)return;
+    const card=target.closest('.tile,.select-row,.team-card,.speech-setting,.voice-setting');
+    const categoryToggle=target.closest('.category-toggle');
+    if(!card&&!categoryToggle)return;
+    for(const details of root.querySelectorAll('details[open]')){
+      if(card&&(details===card||details.contains(target)))continue;
+      details.open=false;
+    }
+    if(!card?.closest('.speech-setting')){
+      speedExpanded=false;speedSearchExpanded=false;showSpeed();
+    }
+  };
+  root.addEventListener('click',closePreviousOptions,true);
   for(const control of originalControls){
     if(control===rate)continue;
     if(control===speech){targetFor('speech').append(speechSetting);continue;}

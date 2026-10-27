@@ -1,4 +1,4 @@
-# AccessEase — cPanel deployment
+# A11yease — cPanel deployment
 
 This package serves the built website and its Node.js backend. Live website keys
 currently work without payment. No Razorpay credentials are required.
