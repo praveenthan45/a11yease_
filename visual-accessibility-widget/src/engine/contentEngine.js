@@ -50,16 +50,13 @@ export function createContentEngine({ root = document.body, host, nonce, styleRo
     }
   }
   function apply(settings) {
-    const preserveScroll = settings.dyslexiaFont || current?.dyslexiaFont;
     const scroller = document.scrollingElement || document.documentElement;
     const left = scroller.scrollLeft, top = scroller.scrollTop;
     applyContent(settings);
-    if (preserveScroll) {
-      // Baseline measurement can temporarily clamp the scroll position.
-      root.getBoundingClientRect();
-      if (scroller.scrollLeft !== left) scroller.scrollLeft = left;
-      if (scroller.scrollTop !== top) scroller.scrollTop = top;
-    }
+    // Any accessibility setting can trigger layout recalculation on host pages.
+    // Keep the user's reading position stable while the new styles are applied.
+    if (scroller.scrollLeft !== left) scroller.scrollLeft = left;
+    if (scroller.scrollTop !== top) scroller.scrollTop = top;
   }
   function applyContent(settings) {
     const scrollGuard = settings.dyslexiaFont || current?.dyslexiaFont ? 'html{overflow-anchor:none!important;}' : '';

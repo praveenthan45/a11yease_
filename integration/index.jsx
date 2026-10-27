@@ -112,10 +112,16 @@ function snapshot() {
   return {base:base.getSettings(),visual:{...visual},tools:{...tools},additional:{...additional},assist:navin ? snapshotSettingsPatch(navin.settings) : {}};
 }
 function applyVisualSettings() {
+  const scroller=document.scrollingElement||document.documentElement;
+  const left=scroller.scrollLeft,top=scroller.scrollTop;
   const effective=effectiveVisualSettings(visual,additional);
   visualEngine.apply(effective);readingEngine.apply(effective);
   cognitiveReadingEngine?.apply(additional.cognitiveReading);
   widgetAppearance?.apply(effective,base.getSettings());
+  // Cognitive reading can wrap text after the page theme has been applied.
+  // Restore once after all related page updates so the viewport stays put.
+  if(scroller.scrollLeft!==left)scroller.scrollLeft=left;
+  if(scroller.scrollTop!==top)scroller.scrollTop=top;
 }
 function changeAdditional(patch) {
   additional=normalizeAdditional({...additional,...patch});applyVisualSettings();persist();ui?.();base.refresh();base.status('Accessibility settings updated.');
