@@ -23,7 +23,7 @@ function setup({ unsupported = false, failStart = false, names = null } = {}) {
     state: {voice: true}, recognition: null, selectedReadingText: '',
     window: {SpeechRecognition: unsupported ? undefined : Recognition, scrollBy: value => events.push(['scroll', value.top])},
     status: text => events.push(['status', text]), apply: () => events.push(['apply']),
-    setVoicePhase:()=>{}, scrollVoice:top=>events.push(['scroll',top]),
+    setVoicePhase:()=>{}, showVoiceTranscript:()=>{}, scrollVoice:top=>events.push(['scroll',top]),
     root:{contains:()=>true},panel:{hidden:false},voiceInput:{hidden:true},
     move: direction => events.push(['move', direction]),
     focused: () => items[0], controls:()=>items,

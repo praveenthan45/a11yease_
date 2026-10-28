@@ -68,6 +68,12 @@ test('Navigation keeps the saved Voice Command switch and Resume microphone acti
     search.value='';search.dispatchEvent(new t.w.Event('input'));
     assert.equal(wrapper.hidden,false);
     resume.click();assert.equal(t.sessions.length,1);assert.equal(t.sessions[0].started,true);assert.equal(t.w.AccessEase.getSettings().voice,true);
+    speech(t.sessions[0],0,'Settings');
+    t.w.AccessEase.panelLanguage.setLanguage('ta');
+    const transcript=t.root.querySelector('.footer .voice-transcript');
+    assert.ok(transcript&&!transcript.closest('[hidden]'),'spoken text stays in the visible footer outside Navigation');
+    assert.equal(t.root.querySelector('.body').contains(transcript),false,'scrolling settings cannot move the transcript out of view');
+    assert.equal(transcript.querySelector('.voice-transcript-text').textContent,'Settings','panel translation preserves the exact spoken words');
     voice.click();assert.equal(t.sessions[0].aborted,true);assert.equal(t.w.AccessEase.getSettings().voice,false);
     assert.equal(JSON.parse(t.w.localStorage.getItem('accessease.preferences.v1')).voiceRequested,false);
     assert.equal(t.root.querySelector('[data-setting="voice"]'),voice,'moving the control retains its original listeners');
@@ -87,7 +93,7 @@ test('speech ending requests a final transcript and runs a completed command onc
     assert.equal(session.aborted,undefined);
     assert.equal(t.root.querySelector('.body').scrollTop,0,'partial words never execute');
     speech(session,0,'scroll down');speech(session,0,'scroll down');
-    assert.equal(t.root.querySelector('.body').scrollTop,450,'complete result runs once');
+    assert.deepEqual(t.pageScroll,[450],'complete result scrolls the website once');
     assert.ok(![...clock.timers.values()].some(timer=>[1500,3000,8000].includes(timer.delay)));
     session.onend();clock.tick(200);
     assert.equal(t.sessions.length,2,'listening resumes after graceful finalization');
@@ -108,13 +114,50 @@ test('Hearing with no final result reconnects instead of remaining stuck and Sto
     const next=t.sessions[1];next.onaudiostart();
     const final=[{transcript:'scroll down'}];final.isFinal=true;
     stale({resultIndex:0,results:[final]});
-    assert.equal(t.root.querySelector('.body').scrollTop,0,'retired callbacks cannot execute commands');
+    assert.deepEqual(t.pageScroll,[],'retired callbacks cannot execute commands');
     speech(next,0,'scroll down');
-    assert.equal(t.root.querySelector('.body').scrollTop,450);
+    assert.deepEqual(t.pageScroll,[450]);
     next.onspeechstart();next.onspeechend();clock.tick(1500);clock.tick(3000);
     assert.match(t.root.querySelector('.status').textContent,/Reconnecting automatically/);
     t.root.querySelector('.voice-indicator button').click();
     assert.equal(clock.timers.size,0);
+    assert.deepEqual(t.errors,[]);
+  }finally{t.w.close();}
+});
+
+test('voice scrolls the website with settings open and accepts explicit settings scrolling and button phrases',()=>{
+  const t=setup(()=>{});let clicked=0;
+  try{
+    t.w.document.querySelector('#save').addEventListener('click',()=>clicked++);
+    t.root.querySelector('[data-setting="voice"]').click();t.sessions[0].onaudiostart();
+    speech(t.sessions[0],0,'scroll down');speech(t.sessions[0],1,'scroll up');
+    speech(t.sessions[0],2,'Hey A11yEase, can you please scroll the website down?');
+    assert.deepEqual(t.pageScroll,[450,-450,450]);
+    assert.equal(t.root.querySelector('.body').scrollTop,0);
+    speech(t.sessions[0],3,'scroll settings down');
+    assert.equal(t.root.querySelector('.body').scrollTop,450);
+    speech(t.sessions[0],4,'scroll up in the settings');
+    assert.equal(t.root.querySelector('.body').scrollTop,0);
+    assert.deepEqual(t.pageScroll,[450,-450,450],'explicit panel commands leave the website in place');
+    speech(t.sessions[0],5,'click the button Save bookmark');
+    speech(t.sessions[0],6,'click Save bookmark button please');
+    speech(t.sessions[0],6,'click Save bookmark button please');
+    assert.equal(clicked,2,'both button phrases work and duplicate results never click twice');
+    assert.equal(t.root.querySelector('.footer .voice-transcript-text').textContent,'click Save bookmark button please');
+    assert.deepEqual(t.errors,[]);
+  }finally{t.w.close();}
+});
+
+test('voice can activate visible custom buttons and links outside the keyboard tab order',()=>{
+  const t=setup(()=>{}),clicked=[];
+  try{
+    for(const [role,name] of [['button','Continue'],['link','Our services']]){
+      const item=t.w.document.createElement('div');item.setAttribute('role',role);item.textContent=name;
+      item.addEventListener('click',()=>clicked.push(name));t.w.document.querySelector('main').append(item);
+    }
+    t.root.querySelector('[data-setting="voice"]').click();t.sessions[0].onaudiostart();
+    speech(t.sessions[0],0,'click Continue button');speech(t.sessions[0],1,'click the link Our services');
+    assert.deepEqual(clicked,['Continue','Our services']);
     assert.deepEqual(t.errors,[]);
   }finally{t.w.close();}
 });
@@ -227,24 +270,32 @@ test('one recognizer opens the microphone, hears speech, scrolls, and clicks a n
     assert.match(t.root.querySelector('.status').textContent,/Waiting for microphone audio/);
     t.sessions[0].onaudiostart();
     assert.equal(t.root.querySelector('[data-setting="voice"]').dataset.voicePhase,'listening');
+    const transcripts=[...t.root.querySelectorAll('.voice-transcript')];
+    assert.equal(transcripts.length,2,'spoken words have an inline and a floating display');
+    assert.ok(transcripts.every(output=>!output.hidden&&output.querySelector('.voice-transcript-label').textContent==='Voice Command: '),'listening status is visible before the first recognized word');
     const interim=[{transcript:'scroll do'}];interim.isFinal=false;
     t.sessions[0].onresult({resultIndex:0,results:[interim]});
     assert.match(t.root.querySelector('.status').textContent,/Hearing “scroll do”/);
+    assert.ok(transcripts.every(output=>!output.hidden&&output.querySelector('.voice-transcript-text').textContent==='scroll do'),'both displays update while the user speaks');
     assert.equal(t.root.querySelector('.body').scrollTop,0,'interim words do not run commands');
     speech(t.sessions[0],0,'scroll down');
-    assert.equal(t.root.querySelector('.body').scrollTop,450,'open settings panel scrolls');
-    assert.deepEqual(t.pageScroll,[],'page stays in place while settings are open');
+    assert.ok(transcripts.every(output=>output.querySelector('.voice-transcript-text').textContent==='scroll down'),'final words remain visible after command feedback');
+    assert.equal(t.root.querySelector('.body').scrollTop,0,'website commands leave the open settings panel in place');
+    assert.deepEqual(t.pageScroll,[450],'website scrolls even while settings are open');
     speech(t.sessions[0],1,'click on the Save bookmark button');
     assert.equal(clicked,1,'named page button is activated');
     assert.equal(t.root.querySelector('.panel').hidden,true,'page button is revealed');
     assert.equal(t.root.querySelector('.voice-indicator').hidden,false,'listening remains visible after closing settings');
+    assert.equal(t.root.querySelector('.voice-indicator .voice-transcript-text').textContent,'click on the Save bookmark button','the floating display keeps the actual spoken words');
     speech(t.sessions[0],2,'scroll down');
-    assert.deepEqual(t.pageScroll,[450],'page scrolls after settings are closed');
+    assert.deepEqual(t.pageScroll,[450,450],'page also scrolls after settings are closed');
     speech(t.sessions[0],3,'click missing button');
     assert.match(t.root.querySelector('.voice-indicator-text').textContent,/No available button/,'unmatched commands stay visible outside settings');
+    assert.ok(transcripts.every(output=>output.querySelector('.voice-transcript-text').textContent==='click missing button'),'unmatched speech is also shown');
     t.root.querySelector('.voice-indicator button').click();
     assert.equal(t.sessions[0].aborted,true);
     assert.equal(t.root.querySelector('.voice-indicator').hidden,true);
+    assert.ok(transcripts.every(output=>output.hidden&&!output.querySelector('.voice-transcript-text').textContent),'stopping clears both spoken-word displays');
     assert.deepEqual(t.errors,[]);
   }finally{t.w.close();}
 });
@@ -279,7 +330,7 @@ for(const failure of ['throw','network','audio-capture','end','timeout']){
       t.sessions[1].onaudiostart();
       lateResult?.({resultIndex:0,results:[]});
       speech(t.sessions[1],0,'scroll down');
-      assert.equal(t.root.querySelector('.body').scrollTop,450);
+      assert.deepEqual(t.pageScroll,[450]);
       t.sessions[1].onend();await new Promise(resolve=>setTimeout(resolve,250));
       assert.equal(t.sessions[2].track,undefined,'normal reconnect stays on native capture');
       assert.equal(requests,1);
@@ -356,7 +407,7 @@ test('interrupted microphone reconnects, accepts a command, and Stop cancels rec
     assert.equal(t.sessions.length,2);t.sessions[1].onaudiostart();
     assert.equal(toggle.dataset.voicePhase,'listening');
     speech(t.sessions[1],0,'scroll down');
-    assert.equal(t.root.querySelector('.body').scrollTop,450);
+    assert.deepEqual(t.pageScroll,[450]);
     speech(t.sessions[1],1,'close settings');
     t.sessions[1].onerror({error:'network'});
     assert.equal(t.root.querySelector('.voice-indicator').hidden,false);

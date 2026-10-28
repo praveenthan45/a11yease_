@@ -19,6 +19,7 @@
   host.setAttribute('data-uaw-ignore','');
   host.setAttribute('data-a11ytb-host','');
   let teamExtension = null;
+  const landingURL = 'http://127.0.0.1:5173/';
   const badgeURL = new URL('accessibility-badge.png?v=20261014-uploaded-logo', document.currentScript?.src || document.baseURI).href;
   const symbol = `<img class="badge" src="${badgeURL}" alt="" aria-hidden="true">`;
   root.innerHTML = `<style>
@@ -36,8 +37,9 @@
   @container(max-width:540px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.top,.intro,.footer{padding-left:20px;padding-right:20px}.body{padding-left:20px;padding-right:20px}.tile,.select-row{padding:10px}.tile strong,.select-row label{font-size:12px}.footer-actions{gap:10px}.status{min-width:0;font-size:11px}.reset{min-width:120px;font-size:11px}}
   @container(max-width:400px){.top{gap:10px;padding-top:15px;padding-bottom:15px}.top .logo{width:35px;height:35px}.top h2{font-size:20px;margin:0}.top p{display:none}.intro{gap:5px;padding-top:10px;padding-bottom:10px;font-size:12px}.tile small{font-size:10px}.footer{padding-top:10px;padding-bottom:10px}.footnote{font-size:9px}}
   .panel .top{background:#FFFFFF;color:#000000}.panel .top h2,.panel .top p,.panel .close{color:#000000}.panel .close{border-color:#000000}.panel .close:hover{background:#F8FAFC}
+  .panel .top a.brand-link{color:inherit;text-decoration:none;cursor:pointer}.top .brand-link:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:4px}
   </style><button class="skip" hidden>Skip to main content</button><button class="launcher" aria-label="Open accessibility settings" aria-expanded="false" aria-controls="ae-panel"><img class="badge launcher-badge" src="${badgeURL}" alt="" aria-hidden="true"></button>
-  <section class="panel" id="ae-panel" aria-label="Accessibility settings" hidden><div class="top"><div class="logo">${symbol}</div><div><h2><span class="ae-wordmark"><span class="ae-wordmark-start">A11y</span><span class="ae-wordmark-end">Ease</span></span></h2><p>Your page. Your pace. Your preferences.</p></div><button class="close" aria-label="Close accessibility settings">×</button></div><div class="intro" hidden><span class="intro-summary" hidden><span class="total">13 settings</span><span class="count">0 active</span></span></div><div class="body"><div class="grid">
+  <section class="panel" id="ae-panel" aria-label="Accessibility settings" hidden><div class="top"><a class="logo brand-link" href="${landingURL}" target="_blank" rel="noopener noreferrer" aria-label="A11yEase home (opens in a new tab)">${symbol}</a><div><h2><a class="ae-wordmark brand-link" href="${landingURL}" target="_blank" rel="noopener noreferrer" aria-label="A11yEase home (opens in a new tab)"><span class="ae-wordmark-start">A11y</span><span class="ae-wordmark-end">Ease</span></a></h2><p>Your page. Your pace. Your preferences.</p></div><button class="close" aria-label="Close accessibility settings">×</button></div><div class="intro" hidden><span class="intro-summary" hidden><span class="total">13 settings</span><span class="count">0 active</span></span></div><div class="body"><div class="grid">
   ${tile('speech','speech','Text to Speech','Drag to highlight the text you want to hear')}${tile('simple','simple','Simplified Text Mode','Use clearer wording across the page')}
   <div class="select-row"><label for="rate"><span class="icon" aria-hidden="true">${settingIcon('rate')}</span>Adjustable Reading Speed<small>Speed of the voice reader</small></label><select id="rate"><option value="0.75">0.75× · Slower</option><option value="1">1× · Normal</option><option value="1.1">1.1× · Slightly faster</option><option value="1.25">1.25×</option><option value="1.5">1.5× · Faster</option></select></div>
   <div class="select-row"><label for="align"><span class="icon" aria-hidden="true">${settingIcon('align')}</span>Text Alignment<small>Adjust all page text</small></label><select id="align"><option value="original">Original</option><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="justify">Justify</option></select></div>
@@ -58,10 +60,24 @@
   const voiceTile=root.querySelector('[data-setting="voice"]'),voiceSetting=document.createElement('div');
   voiceSetting.className='voice-setting';voiceTile.before(voiceSetting);voiceSetting.append(voiceTile);
   const voiceResume=document.createElement('button');voiceResume.type='button';voiceResume.className='voice-resume';voiceResume.textContent='Resume microphone';voiceResume.hidden=true;voiceSetting.append(voiceResume);
+  let voiceHeardText='';
+  const voiceTranscript=document.createElement('p');voiceTranscript.className='voice-transcript';voiceTranscript.hidden=true;
+  voiceTranscript.innerHTML='<span class="voice-transcript-label">You said: </span><span class="voice-transcript-text" dir="auto" translate="no" data-panel-original-content></span>';
+  root.querySelector('.footer-actions').after(voiceTranscript);
   const voiceIndicator=document.createElement('div');voiceIndicator.className='voice-indicator';voiceIndicator.hidden=true;
-  voiceIndicator.innerHTML='<span class="voice-indicator-text" role="status" aria-live="polite"></span><button type="button" aria-label="Stop voice commands">Stop</button>';
+  voiceIndicator.innerHTML='<div class="voice-indicator-copy"><span class="voice-indicator-text" role="status" aria-live="polite"></span></div><button type="button" aria-label="Stop voice commands">Stop</button>';
+  const voiceIndicatorTranscript=voiceTranscript.cloneNode(true);voiceIndicator.querySelector('.voice-indicator-copy').append(voiceIndicatorTranscript);
   root.append(voiceIndicator);
   const voiceStyle=document.createElement('style');voiceStyle.textContent='.voice-indicator{position:fixed;right:100px;bottom:25px;z-index:2147483646;max-width:min(310px,calc(100vw - 120px));display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #bfdbfe;border-radius:12px;background:#fff;color:#092644;box-shadow:0 6px 20px #09264424;pointer-events:auto;font:12px/1.5 Inter,Arial,sans-serif}.voice-indicator button{flex-shrink:0;padding:6px 10px;border:1px solid #bfdbfe;border-radius:7px;background:#eff6ff;color:#1749b9}.voice-indicator[hidden]{display:none!important}.voice-setting{position:relative;min-width:0}.voice-setting>.tile{width:100%;height:100%}.voice-setting .tile[data-voice-phase=resume] small{visibility:hidden}.voice-resume{position:absolute;bottom:8px;left:15px;padding:2px 4px;border:0;background:transparent;color:var(--blue);font:600 10px Inter,Arial,sans-serif;text-decoration:underline}.voice-resume[hidden]{display:none!important}.panel .tile[data-setting=voice][data-voice-phase=starting]:after,.panel .tile[data-setting=voice][data-voice-phase=permission]:after,.panel .tile[data-setting=voice][data-voice-phase=reconnecting]:after{border-color:#d97706;background:radial-gradient(circle at 24px 10px,#fff 0 7px,transparent 8px),#d97706}';root.append(voiceStyle);
+  voiceStyle.textContent+='.voice-indicator-copy{min-width:0;flex:1;overflow-wrap:anywhere}.voice-transcript{margin:0;max-height:6em;overflow:auto;overflow-wrap:anywhere;white-space:pre-wrap;overscroll-behavior:contain}.voice-transcript-label{font-weight:600}.voice-indicator .voice-transcript{margin-top:6px}.panel .voice-transcript{margin:8px 0 0;padding:8px 10px;border:1px solid var(--ae-container-border,#bfdbfe);border-radius:8px;background:var(--ae-bg,var(--bg));color:var(--ae-text,var(--muted));font:12px/1.5 Inter,Arial,sans-serif}';
+  function showVoiceTranscript(transcript=voiceHeardText){
+    voiceHeardText=state.voice?transcript.trim():'';
+    for(const output of [voiceTranscript,voiceIndicatorTranscript]){
+      output.querySelector('.voice-transcript-label').textContent=voiceHeardText?'You said: ':'Voice Command: ';
+      output.querySelector('.voice-transcript-text').textContent=voiceHeardText||(state.voice?voiceTile.querySelector('small').textContent:'');
+      output.hidden=!state.voice;
+    }
+  }
   function setVoicePhase(phase,message){
     const tile=root.querySelector('[data-setting="voice"]');tile.dataset.voicePhase=phase;
     tile.querySelector('small').textContent=({resume:'Saved · microphone paused',permission:'Allow microphone access to start',starting:'Starting microphone…',listening:'Listening · say “scroll down”',reconnecting:'Reconnecting microphone…',error:'Microphone unavailable · check the message below'})[phase]||'Speak commands · Microphone needed';
@@ -69,6 +85,7 @@
     voiceResume.hidden=!(voiceRequested&&!state.voice);
     if(message)voiceIndicator.querySelector('span').textContent=message;
     voiceIndicator.hidden=!state.voice||!panel.hidden;
+    showVoiceTranscript();
   }
   voiceResume.addEventListener('click',()=>{state.voice=true;voiceRequested=true;startVoice();apply();});
   voiceIndicator.querySelector('button').addEventListener('click',()=>{voiceRequested=false;stopVoice();apply();status('Voice Commands disabled.');});
@@ -149,7 +166,7 @@
   launcher.addEventListener('click',()=>openPanel(panel.hidden));root.querySelector('.close').addEventListener('click',()=>openPanel(false));
   function goMain(){openPanel(false);pageFocusEntryPending=false;const el=main();if(!el.hasAttribute('tabindex'))el.setAttribute('tabindex','-1');el.focus({preventScroll:true});el.scrollIntoView({behavior:'instant',block:'start'});}
   root.querySelector('.skip').addEventListener('click',goMain);
-  function controls(){const selector='a[href],button,input,select,textarea,summary,video[controls],audio[controls],[tabindex]';const modal=[...root.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"]'),...document.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"]')].find(el=>!el.closest('[hidden],[inert]')&&el.getClientRects().length);return [...document.querySelectorAll(selector),...root.querySelectorAll(selector)].filter(el=>el!==host && (!modal||modal.contains(el)) && !el.disabled && el.getAttribute('aria-disabled')!=='true' && el.tabIndex>=0 && !el.closest('[hidden],[inert],[aria-hidden="true"],svg,picture,img,.course-art,[role="img"]') && el.getClientRects().length && getComputedStyle(el).visibility!=='hidden');}
+  function controls(selector='a[href],button,input,select,textarea,summary,video[controls],audio[controls],[tabindex]',includeNonTabbable=false){const modal=[...root.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"]'),...document.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"]')].find(el=>!el.closest('[hidden],[inert]')&&el.getClientRects().length);return [...document.querySelectorAll(selector),...root.querySelectorAll(selector)].filter(el=>el!==host && (!modal||modal.contains(el)) && !el.disabled && el.getAttribute('aria-disabled')!=='true' && (includeNonTabbable||el.tabIndex>=0) && !el.closest('[hidden],[inert],[aria-hidden="true"],svg,picture,img,.course-art,[role="img"]') && el.getClientRects().length && getComputedStyle(el).visibility!=='hidden');}
   function focused(){return root.activeElement||document.activeElement;}
   function move(direction){const items=controls();if(!items.length)return;const current=items.indexOf(focused());const index=current<0?(direction>0?0:items.length-1):(current+direction+items.length)%items.length;items[index].focus();}
   function updateCaptions(){let tracks=0;document.querySelectorAll('video').forEach(v=>{for(const track of v.textTracks){if(['captions','subtitles'].includes(track.kind)){track.mode=state.captions?'showing':'disabled';tracks++;}}});return tracks;}
@@ -303,8 +320,8 @@
     if(state.speech&&selectedReadingText){startSpeech();apply();}
   });
   document.addEventListener('keyup',event=>{if(event.key==='Shift'&&state.speech&&captureSelection()){startSpeech();apply();}});
-  function scrollVoice(amount,pageOnly=false){
-    let container=!pageOnly&&!panel.hidden?root.querySelector('.body'):null;
+  function scrollVoice(amount,settingsOnly=false){
+    let container=settingsOnly&&!panel.hidden?root.querySelector('.body'):null;
     if(!container){
       const scrollable=el=>el&&el!==host&&el.clientHeight>0&&el.scrollHeight>el.clientHeight&&/(auto|scroll|overlay)/.test(getComputedStyle(el).overflowY);
       let active=document.activeElement;
@@ -360,7 +377,7 @@
         const option=document.createElement('option');option.value=deviceId||'';option.textContent=track.label||'Current microphone';voiceInputSelect.append(option);
       }
       voiceInputSelect.value=deviceId||'';
-      track.onended=()=>{if(voiceInputStream!==stream||!state.voice)return;stopVoice();apply();setVoicePhase('error');status('The selected microphone disconnected. Reconnect it, then turn Voice Commands on again.');};
+      track.onended=()=>{if(voiceInputStream!==stream||!state.voice)return;failVoice('The selected microphone disconnected. Reconnect it, then turn Voice Commands on again.');};
       beginVoiceRecognition(API);
     }catch(error){discard();if(current()){voiceInputPending=false;voiceMicrophoneError(error);}}
   }
@@ -375,13 +392,13 @@
     const visible=[...el.childNodes||[]].filter(node=>node.nodeType!==1||node.getAttribute('aria-hidden')!=='true'&&node.tagName!=='SVG').map(node=>node.textContent).join(' ');
     return [...new Set([voiceControlName(el),el.querySelector('strong')?.textContent,el.matches('summary')?el.querySelector('span:nth-child(2)')?.textContent:'',el.getAttribute('title'),visible].filter(Boolean).map(normalizeVoiceText))];
   }
-  function clickableControls(){return controls().filter(el=>el.matches('a[href],button,input,select,textarea,summary,[role="button"],[role="link"],[role="switch"],[role="checkbox"]'));}
+  function clickableControls(){const selector='a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"],[role="switch"],[role="checkbox"]';return controls(selector,true).filter(el=>el.matches(selector));}
   function clickNamedVoiceControl(name){
     let target=normalizeVoiceText(name), ordinal=null;
     const candidates=clickableControls();
     let matches=candidates.filter(el=>voiceControlNames(el).includes(target));
     // Allow “click the Start learning button” while preserving names containing “button”.
-    if(!matches.length){target=target.replace(/^the\s+/,'').replace(/\s+(button|link)$/,'');
+    if(!matches.length){target=target.replace(/^the\s+/,'').replace(/^(button|link)\s+/,'').replace(/\s+(button|link)$/,'');
       const position=target.match(/^(first|second|third|last)\s+(.+)$/);if(position){ordinal=position[1];target=position[2];}
       matches=candidates.filter(el=>voiceControlNames(el).includes(target));
     }
@@ -412,17 +429,20 @@
   }
   function stopVoice(){
     try{window.sessionStorage.removeItem(voiceNavigationKey);}catch{}
-    state.voice=false;voiceNetworkFailures=0;voiceResultFailures=0;
+    state.voice=false;voiceNetworkFailures=0;voiceResultFailures=0;showVoiceTranscript();
     clearTimeout(voiceRestartTimer);clearTimeout(voiceStartTimer);voiceRestartTimer=voiceStartTimer=null;
     releaseVoiceSession(recognition);
     stopVoiceInput();
     setVoicePhase('off','Microphone off.');
   }
+  function failVoice(message){
+    voiceRequested=false;stopVoice();apply();setVoicePhase('error',message);status(message);
+  }
   function runVoiceCommand(transcript){
-    const text=normalizeVoiceText(transcript).replace(/^(?:hey\s+)?access\s*ease\s+/,'').replace(/^(?:can|could|would|will)\s+you\s+/,'').replace(/^please\s+|\s+please$/g,'');
+    const text=normalizeVoiceText(transcript).replace(/^(?:hey\s+)?(?:access\s*ease|a11y\s*ease|ally\s*ease)\s+/,'').replace(/^(?:please\s+)?(?:can|could|would|will)\s+you\s+/,'').replace(/^please\s+|\s+please$/g,'');
+    const scroll=text.match(/^(?:(?:scroll|move|go)\s+)?(?:the\s+)?(?:(page|screen|website|settings|panel)\s+)?(up|down)(?:\s+(?:in\s+)?(?:the\s+)?(page|screen|website|settings|panel))?$/);
     let action='';
-    if(/^(?:scroll|move|go) (?:the )?(?:page |screen )?down(?: (?:the )?(?:page|screen))?$/.test(text)||['down','page down'].includes(text)){scrollVoice(450,/\b(page|screen)\b/.test(text));action='Scrolled down';}
-    else if(/^(?:scroll|move|go) (?:the )?(?:page |screen )?up(?: (?:the )?(?:page|screen))?$/.test(text)||['up','page up'].includes(text)){scrollVoice(-450,/\b(page|screen)\b/.test(text));action='Scrolled up';}
+    if(scroll){const settingsOnly=[scroll[1],scroll[3]].some(scope=>scope==='settings'||scope==='panel');scrollVoice(scroll[2]==='down'?450:-450,settingsOnly);action=`Scrolled ${scroll[2]}${settingsOnly?' in settings':''}`;}
     else if(['next','next item','next control'].includes(text)){move(1);action='Moved to the next item';}
     else if(['previous','previous item','previous control','back'].includes(text)){move(-1);action='Moved to the previous item';}
     else if(/^(click|select|activate|press|tap)\s+/.test(text)){const label=clickNamedVoiceControl(text.replace(/^(click|select|activate|press|tap)\s+(?:on\s+)?/,''));if(label===null)return;action=`Activated “${label}”`;}
@@ -446,19 +466,19 @@
     if(!state.voice||recognition||voiceInputPending)return;
     clearTimeout(voiceRestartTimer);voiceRestartTimer=null;
     const API=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!API){stopVoice();apply();setVoicePhase('error');status('Voice commands are unavailable here. Open this page in Google Chrome with speech recognition support.');return;}
-    if(window.isSecureContext===false){stopVoice();apply();setVoicePhase('error');status('Microphone access needs HTTPS or localhost. Open this page on a secure address, then turn Voice Commands on again.');return;}
-    if(!restarting){voiceStartFailures=0;voiceNetworkFailures=0;voiceResultFailures=0;voiceNativeInput=false;status('Starting microphone. Allow Chrome microphone access if prompted.');}
+    if(!API){failVoice('Voice commands are unavailable here. Open this page in Google Chrome with speech recognition support.');return;}
+    if(window.isSecureContext===false){failVoice('Microphone access needs HTTPS or localhost. Open this page on a secure address, then turn Voice Commands on again.');return;}
+    if(!restarting){showVoiceTranscript('');voiceStartFailures=0;voiceNetworkFailures=0;voiceResultFailures=0;voiceNativeInput=false;status('Starting microphone. Allow Chrome microphone access if prompted.');}
     if(!voiceNativeInput&&supportsVoiceInputTrack()&&!voiceInputStream){openVoiceInput(API);return;}
     beginVoiceRecognition(API);
   }
   function voiceMicrophoneError(error){
     const messages={NotAllowedError:'Microphone access was denied. Allow the microphone in Chrome site settings, then turn Voice Commands on again.',SecurityError:'Microphone access was blocked. Check the browser site permissions.',NotFoundError:'No working microphone was found. Connect a microphone and check the browser input device.',NotReadableError:'The microphone could not open. Check your input device and close another app if it is using the microphone.'};
-    stopVoice();apply();setVoicePhase('error');status(messages[error?.name]||'Microphone access failed. Check the browser input device and try Voice Commands again.');
+    failVoice(messages[error?.name]||'Microphone access failed. Check the browser input device and try Voice Commands again.');
   }
   function beginVoiceRecognition(API){
     let session;
-    try{session=new API();}catch{stopVoice();apply();setVoicePhase('error');status('The browser speech service could not open. Try Voice Commands in Google Chrome.');return;}
+    try{session=new API();}catch{failVoice('The browser speech service could not open. Try Voice Commands in Google Chrome.');return;}
     recognition=session;setVoicePhase('starting','Starting Chrome speech recognition…');
     session.continuous=true;session.interimResults=true;session.lang='en-US';
     let audioStarted=false,awaitingResult=false;const handledResults=new Map();
@@ -466,8 +486,7 @@
       if(recognition!==session||!state.voice||!awaitingResult)return;
       if(fallbackToNativeInput())return;
       if(++voiceResultFailures>=3){
-        stopVoice();apply();setVoicePhase('error');
-        status('Microphone hears speech, but Chrome is not returning complete words. Check your internet connection and speech language, then turn Voice Commands on again.');return;
+        failVoice('Microphone hears speech, but Chrome is not returning complete words. Check your internet connection and speech language, then turn Voice Commands on again.');return;
       }
       retry('Speech service did not return a complete command. Reconnecting automatically; please repeat your command.');
     }
@@ -490,7 +509,7 @@
       if(recognition!==session||!state.voice||audioStarted)return;
       if(fallbackToNativeInput())return;
       if(++voiceStartFailures<3){retry('Microphone is taking longer to start. Reconnecting automatically…');return;}
-      stopVoice();apply();setVoicePhase('error');status('Speech recognition did not capture microphone audio. Allow the microphone in browser site settings, select a working default input, then turn Voice Commands on again.');
+      failVoice('Speech recognition did not capture microphone audio. Allow the microphone in browser site settings, select a working default input, then turn Voice Commands on again.');
     }
     session.onstart=()=>{
       if(recognition!==session||!state.voice||audioStarted)return;
@@ -516,6 +535,7 @@
       for(let i=e.resultIndex;i<e.results.length;i++){
         const result=e.results[i],transcript=result[0]?.transcript;
         if(typeof transcript==='string'&&transcript.trim()){
+          showVoiceTranscript(transcript);
           audioStarted=true;clearTimeout(voiceStartTimer);voiceStartTimer=null;voiceStartFailures=0;
           voiceNetworkFailures=0;
           if(result.isFinal){awaitingResult=false;clearTimeout(voiceResultTimer);voiceResultTimer=null;voiceResultFailures=0;if(handledResults.get(i)!==transcript){handledResults.set(i,transcript);runVoiceCommand(transcript);}}
@@ -531,15 +551,14 @@
       if(e.error==='no-speech'||e.error==='aborted'){
         if(!audioStarted){
           if(fallbackToNativeInput())return;
-          if(++voiceStartFailures>=3){stopVoice();apply();setVoicePhase('error');status('Speech recognition repeatedly ended before microphone audio started. Check microphone permission and the browser default input, then turn Voice Commands on again.');return;}
+          if(++voiceStartFailures>=3){failVoice('Speech recognition repeatedly ended before microphone audio started. Check microphone permission and the browser default input, then turn Voice Commands on again.');return;}
         }
         retry('Voice Commands is still on. Reconnecting microphone…');return;
       }
       if(e.error==='network'){
         if(fallbackToNativeInput())return;
         if(++voiceNetworkFailures>4){
-          stopVoice();apply();setVoicePhase('error');
-          status('The browser speech service could not connect after 4 retries. Check your internet connection or VPN/firewall, then turn Voice Commands on again. You can also try Google Chrome.');return;
+          failVoice('The browser speech service could not connect after 4 retries. Check your internet connection or VPN/firewall, then turn Voice Commands on again. You can also try Google Chrome.');return;
         }
         retry('Speech service connection interrupted. Reconnecting automatically; check your internet connection if this continues.',Math.min(1000*2**(voiceNetworkFailures-1),5000));return;
       }
@@ -550,12 +569,12 @@
         'audio-capture':'No working microphone was found. Check your microphone connection and browser input device.',
         'language-not-supported':'English speech recognition is unavailable in this browser.'
       };
-      stopVoice();apply();setVoicePhase('error');status(messages[e.error]||`Voice input stopped (${e.error}). Turn Voice Commands on again to retry.`);
+      failVoice(messages[e.error]||`Voice input stopped (${e.error}). Turn Voice Commands on again to retry.`);
     };
     session.onend=()=>{
       if(recognition!==session||!state.voice)return;
       if(!audioStarted&&fallbackToNativeInput())return;
-      if(!audioStarted&&++voiceStartFailures>=3){stopVoice();apply();setVoicePhase('error');status('Chrome ended speech recognition before microphone audio started. Check microphone permission and the selected input device.');return;}
+      if(!audioStarted&&++voiceStartFailures>=3){failVoice('Chrome ended speech recognition before microphone audio started. Check microphone permission and the selected input device.');return;}
       retry('Voice Commands is still on. Reconnecting microphone…');
     };
     // Arm before start(): a stalled service may never emit the start event.
@@ -565,7 +584,7 @@
       if(fallbackToNativeInput())return;
       releaseVoiceSession(session);
       if(++voiceStartFailures<3){setVoicePhase('reconnecting','Retrying microphone input…');status('Retrying microphone input…');queueVoiceRestart();}
-      else{stopVoice();apply();setVoicePhase('error');status('Microphone input could not start. Check browser microphone access, then turn Voice Commands on again.');}
+      else{failVoice('Microphone input could not start. Check browser microphone access, then turn Voice Commands on again.');}
     }
   }
   let scanTabIndex=null;
