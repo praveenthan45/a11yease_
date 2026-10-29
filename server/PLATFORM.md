@@ -1,5 +1,5 @@
 > Current testing mode: live website keys can be generated and validated without
-> payment. Registered origin, account ownership and revocation checks still apply.
+> payment. Registered origin, administrator authorization and revocation checks still apply.
 > Payment expiry does not disable keys in this mode. The Razorpay documentation
 > below describes the retained payment integration for later use.
 
@@ -8,6 +8,13 @@
 Admin dashboard: `/admin`. The existing playground and widget remain at `/`.
 Login opens the dashboard. The same existing admin account manages all client
 websites. This is an owner-managed portal, not a multi-tenant customer login system.
+
+Public registration and client-account login are disabled. Database cleanup is
+explicitly opt-in: `REMOVE_CLIENT_ACCOUNTS=true` permanently removes legacy client
+account records from that instance after validating the administrator credential
+file. Existing websites, keys and payment records are retained under the
+administrator. Without this flag, stored account records are not deleted. A local
+cleanup does not change the live database.
 
 ## Local setup
 

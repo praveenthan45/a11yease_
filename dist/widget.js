@@ -19,7 +19,7 @@
   host.setAttribute('data-uaw-ignore','');
   host.setAttribute('data-a11ytb-host','');
   let teamExtension = null;
-  const landingURL = 'http://127.0.0.1:5173/';
+  const landingURL = 'https://web.a11yease.tech/';
   const badgeURL = new URL('accessibility-badge.png?v=20261014-uploaded-logo', document.currentScript?.src || document.baseURI).href;
   const symbol = `<img class="badge" src="${badgeURL}" alt="" aria-hidden="true">`;
   root.innerHTML = `<style>
@@ -111,28 +111,120 @@
     ['in close proximity to','near'],['prior to','before'],['subsequent to','after'],
     ['utilize','use'],['utilizes','uses'],['utilized','used'],['utilizing','using'],
     ['approximately','about'],['commence','start'],['commences','starts'],['commenced','started'],
-  ].map(([phrase,plain])=>[new RegExp(`\\b${phrase.replace(/ /g,'\\s+')}\\b`,'gi'),plain]);
-  const simpleExcluded='script,style,noscript,template,code,pre,kbd,samp,svg,math,select,#accessease-widget,[contenteditable]:not([contenteditable="false"]),[data-simple-ignore],[translate="no"]';
+    ['commencing','starting'],['commencement','start'],
+    ['owing to the fact that','because'],['because of the fact that','because'],
+    ['at the present time','now'],['at the present moment','now'],['at this moment in time','now'],
+    ['at a later date','later'],['in the near future','soon'],
+    ['on a weekly basis','each week'],['on a monthly basis','each month'],
+    ['on a yearly basis','each year'],['on an annual basis','each year'],
+    ['with regard to','about'],['with regards to','about'],['with reference to','about'],
+    ['in accordance with','following'],['in compliance with','following'],
+    ['for the purpose of','for'],['for the purposes of','for'],['with the exception of','except'],
+    ['as a consequence of','because of'],['as a result of','because of'],
+    ['despite the fact that','although'],['notwithstanding the fact that','although'],
+    ['until such time as','until'],['at all times','always'],['at your earliest convenience','when you can'],
+    ['the majority of','most'],['a majority of','most'],
+    ['you are required to','you must'],['users are required to','users must'],
+    ['had the ability to','could'],['was able to','could'],['were able to','could'],
+    ['attempt to','try to'],['attempts to','tries to'],['attempted to','tried to'],['attempting to','trying to'],
+    ['ensure that','make sure that'],['ensures that','makes sure that'],
+    ['numerous','many'],['additional','extra'],['additionally','also'],
+    ['frequently','often'],['infrequently','rarely'],['subsequently','later'],
+    ['previously','before'],['initially','at first'],['currently','now'],
+    ['therefore','so'],['consequently','so'],['nevertheless','even so'],['nonetheless','even so'],
+    ['sufficient','enough'],['insufficient','not enough'],['fundamental','basic'],['optimal','best'],
+    ['retain','keep'],['retains','keeps'],['retained','kept'],['retaining','keeping'],
+    ['modify','change'],['modifies','changes'],['modified','changed'],['modifying','changing'],
+    ['modification','change'],['modifications','changes'],
+    ['configure','set up'],['configures','sets up'],['configured','set up'],['configuring','setting up'],
+    ['configuration','setup'],['configurations','setups'],
+    ['initiate','start'],['initiates','starts'],['initiated','started'],['initiating','starting'],
+    ['terminate','end'],['terminates','ends'],['terminated','ended'],['terminating','ending'],
+    ['assist','help'],['assists','helps'],['assisted','helped'],['assisting','helping'],['assistance','help'],
+    ['ascertain','find out'],['ascertains','finds out'],['ascertained','found out'],['ascertaining','finding out'],
+  ];
+  const simpleReplacements=new Map(plainPhrases);
+  const simplePattern=new RegExp(`(^|[^\\p{L}\\p{N}_])(${[...simpleReplacements.keys()].sort((a,b)=>b.length-a.length).map(phrase=>phrase.replace(/ /g,'\\s+')).join('|')})(?![\\p{L}\\p{N}_])`,'giu');
+  const simpleProtected=/((?:https?:\/\/|www\.)[^\s<>"']+|[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}|`[^`\r\n]*`|(?:\.\.?\/|\/)[^\s<>"']+|[\p{L}\p{N}_-]+\.[a-z]{1,10}\b|[#@][\p{L}\p{N}_-]+)/giu;
+  const simpleExcluded='script,style,noscript,template,code,pre,kbd,samp,svg,math,select,#accessease-widget,[data-uaw-ignore],[data-a11ytb-host],[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="searchbox"],[role="combobox"],[role="listbox"],[role="option"],[data-simple-ignore],[translate="no"],[hidden],[inert],[aria-hidden="true"],.material-icons,.material-symbols-outlined,.material-symbols-rounded,.material-symbols-sharp';
+  const simpleObservedAttributes=['placeholder','data-simple','aria-label','title','alt','lang','hidden','inert','aria-hidden','translate','data-simple-ignore','contenteditable'];
+  const simpleObservers=new Map(),simpleFrameLoads=new Map();
+  let simpleRefreshTimer=null;
+  function scheduleSimpleText(){
+    if(!state.simple||simpleRefreshTimer!==null)return;
+    simpleRefreshTimer=setTimeout(()=>{simpleRefreshTimer=null;if(state.simple)applySimpleText();},0);
+  }
+  function simpleLanguage(parent){
+    let current=parent;
+    while(current){
+      const language=current.closest('[lang]')?.getAttribute('lang');
+      if(language)return language;
+      current=current.getRootNode().host;
+    }
+    return parent.ownerDocument.documentElement.lang||'en';
+  }
+  function simpleScopes(){
+    const scopes=new Set(),frames=new Set(),pending=[document.body];
+    while(pending.length){
+      const scope=pending.pop();if(!scope||scopes.has(scope))continue;
+      scopes.add(scope);
+      for(const element of scope.querySelectorAll('*')){
+        if(!element.shadowRoot&&element.tagName!=='IFRAME')continue;
+        if(element.closest(simpleExcluded))continue;
+        if(element.shadowRoot)pending.push(element.shadowRoot);
+        if(element.tagName==='IFRAME'){
+          frames.add(element);
+          if(!simpleFrameLoads.has(element)){element.addEventListener('load',scheduleSimpleText);simpleFrameLoads.set(element,scheduleSimpleText);}
+          try{if(element.contentDocument?.body)pending.push(element.contentDocument.body);}catch{/* Cross-origin frames remain under their own website's control. */}
+        }
+      }
+    }
+    for(const [frame,listener]of simpleFrameLoads)if(!frames.has(frame)){frame.removeEventListener('load',listener);simpleFrameLoads.delete(frame);}
+    for(const [scope,observer]of simpleObservers)if(!scopes.has(scope)){observer.disconnect();simpleObservers.delete(scope);}
+    for(const scope of scopes)if(!simpleObservers.has(scope)){
+      const observer=new MutationObserver(scheduleSimpleText);
+      if(scope!==document.body)observer.observe(scope,{childList:true,characterData:true,attributes:true,attributeFilter:simpleObservedAttributes,subtree:true});
+      if(scope===scope.ownerDocument.body)observer.observe(scope.ownerDocument.documentElement,{attributes:true,attributeFilter:simpleObservedAttributes});
+      simpleObservers.set(scope,observer);
+    }
+    return scopes;
+  }
   function plainText(text,parent,provided){
     const wording=text.trim();if(!wording)return text;
     const authored=provided||simpleWording.get(wording.replace(/\s+/g,' '));
     if(typeof authored==='string'&&authored.trim())return text.replace(wording,()=>authored);
     // Conservative phrase changes only: keep facts, complete sentences and other languages.
-    const language=parent.closest('[lang]')?.getAttribute('lang')||document.documentElement.lang||'en';
+    const language=simpleLanguage(parent);
     if(!/^en(?:-|$)/i.test(language))return text;
-    let plain=text;
-    for(const [pattern,replacement] of plainPhrases)plain=plain.replace(pattern,match=>match===match.toUpperCase()?replacement.toUpperCase():/^[A-Z]/.test(match)?replacement[0].toUpperCase()+replacement.slice(1):replacement);
-    return plain;
+    return text.split(simpleProtected).map((part,index)=>index%2?part:part.replace(simplePattern,(_match,boundary,wording)=>{
+      const replacement=simpleReplacements.get(wording.toLowerCase().replace(/\s+/g,' '));
+      return boundary+(wording===wording.toUpperCase()?replacement.toUpperCase():/^[A-Z]/.test(wording)?replacement[0].toUpperCase()+replacement.slice(1):replacement);
+    })).join('');
   }
   function applySimpleText(){
+    clearTimeout(simpleRefreshTimer);simpleRefreshTimer=null;
     if(!state.simple){
-      simpleNodes.forEach(({original,applied},node)=>{if(node.isConnected&&node.nodeValue===applied)node.nodeValue=original;});
-      simpleAttributes.forEach((attributes,el)=>{if(el.isConnected)attributes.forEach(({original,applied},name)=>{if(el.getAttribute(name)===applied)el.setAttribute(name,original);});});
-      simpleNodes.clear();simpleAttributes.clear();return;
+      simpleNodes.forEach(({original,applied},node)=>{if(node.nodeValue===applied)node.nodeValue=original;});
+      simpleAttributes.forEach((attributes,el)=>{attributes.forEach(({original,applied},name)=>{if(el.getAttribute(name)===applied)el.setAttribute(name,original);});});
+      simpleNodes.clear();simpleAttributes.clear();
+      for(const observer of simpleObservers.values())observer.disconnect();simpleObservers.clear();
+      for(const [frame,listener]of simpleFrameLoads)frame.removeEventListener('load',listener);simpleFrameLoads.clear();return;
     }
-    simpleNodes.forEach((record,node)=>{if(!node.isConnected)simpleNodes.delete(node);});
-    simpleAttributes.forEach((record,el)=>{if(!el.isConnected)simpleAttributes.delete(el);});
-    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+    const scopes=simpleScopes(),managed=node=>scopes.has(node.getRootNode().host?node.getRootNode():node.ownerDocument.body);
+    simpleNodes.forEach((record,node)=>{
+      if(!node.isConnected||!managed(node)||node.parentElement?.closest(`${simpleExcluded},textarea`)){
+        if(node.nodeValue===record.applied)node.nodeValue=record.original;
+        simpleNodes.delete(node);
+      }
+    });
+    simpleAttributes.forEach((attributes,el)=>{
+      if(!el.isConnected||!managed(el)||el.closest(simpleExcluded)){
+        attributes.forEach(({original,applied},name)=>{if(el.getAttribute(name)===applied)el.setAttribute(name,original);});
+        simpleAttributes.delete(el);
+      }
+    });
+    for(const scope of scopes){
+    const walker=scope.ownerDocument.createTreeWalker(scope,NodeFilter.SHOW_TEXT);
     let node;
     while((node=walker.nextNode())){
       const parent=node.parentElement;
@@ -146,7 +238,7 @@
       if(desired!==original)simpleNodes.set(node,{original,applied:desired});else simpleNodes.delete(node);
       if(node.nodeValue!==desired)node.nodeValue=desired;
     }
-    document.querySelectorAll('[placeholder],[aria-label],[title],img[alt]').forEach(el=>{
+    scope.querySelectorAll('[placeholder],[aria-label],[title],img[alt]').forEach(el=>{
       if(el.closest(simpleExcluded))return;
       let attributes=simpleAttributes.get(el)||new Map();
       for(const name of ['placeholder','aria-label','title','alt']){
@@ -158,6 +250,7 @@
       }
       if(attributes.size)simpleAttributes.set(el,attributes);else simpleAttributes.delete(el);
     });
+    }
   }
   function main(){return document.querySelector('main,[role="main"]')||document.body;}
   function persist(){try{localStorage.setItem(key,JSON.stringify({...state,voice:false,voiceRequested}));}catch{}}
@@ -681,12 +774,13 @@
   window.addEventListener('blur',()=>{latched.clear();stickyAltCaptured=false;});
   document.addEventListener('loadedmetadata',updateCaptions,true);
   const observer=new MutationObserver(records=>{
-    if(records.some(record=>{
+    const changes=records.filter(record=>{
       const parent=record.target.nodeType===Node.ELEMENT_NODE?record.target:record.target.parentElement;
-      if(!parent||parent===host||parent.closest('#accessease-widget,script,style,noscript'))return false;
-      return record.type==='childList'&&[...record.addedNodes].some(node=>node!==host&&!node.matches?.('[data-ae-focus-ring]')&&(node.nodeType===Node.ELEMENT_NODE||state.simple&&node.nodeType===Node.TEXT_NODE))||state.simple&&(record.type==='characterData'||record.type==='attributes');
-    }))apply();
-  });observer.observe(document.body,{childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','data-simple','aria-label','title','alt'],subtree:true});
+      return parent&&parent!==host&&!parent.closest('#accessease-widget,script,style,noscript');
+    });
+    if(changes.some(record=>record.type==='childList'&&[...record.addedNodes].some(node=>node!==host&&!node.matches?.('[data-ae-focus-ring]')&&node.nodeType===Node.ELEMENT_NODE)))apply();
+    else if(state.simple&&changes.length)scheduleSimpleText();
+  });observer.observe(document.body,{childList:true,characterData:true,attributes:true,attributeFilter:simpleObservedAttributes,subtree:true});
   function resumeVoiceNavigation(){
     let continuation;
     try{

@@ -96,6 +96,100 @@ test('new and changed content is simplified without restoring stale app messages
   }finally{t.close();}
 });
 
+test('ordinary English website copy is simplified offline while URLs, email addresses, identifiers and controls stay intact',()=>{
+  const t=setup(`<!doctype html><html lang="en"><body><main>
+    <h1>Additional configuration assistance</h1>
+    <p id="copy">At the present time, we will retain all 12 records prior to commencing. Users are required to configure the additional options.</p>
+    <p id="literal">Visit https://example.com/utilize?note=commence or www.commence.com. Email commence@example.com. Open /utilize/configuration or commence.txt; keep utilize_record and #commence unchanged. Run \`utilize()\`.</p>
+    <p id="mixed">préutilize Utilize 3 items.</p><p id="caps">CONFIGURE THE ADDITIONAL OPTIONS.</p>
+    <span class="material-icons">commence</span><button id="button" value="commence">Commence download</button>
+    <a id="link" href="/commence?mode=utilize">Additional information</a>
+  </main></body></html>`);
+  try{
+    const main=t.document.querySelector('main'),original=main.innerHTML;
+    const literal=t.document.querySelector('#literal').textContent,button=t.document.querySelector('#button'),link=t.document.querySelector('#link');let clicks=0;
+    button.addEventListener('click',()=>clicks++);t.toggle();
+    assert.equal(t.document.querySelector('h1').textContent,'Extra setup help');
+    assert.equal(t.document.querySelector('#copy').textContent,'Now, we will keep all 12 records before starting. Users must set up the extra options.');
+    assert.equal(t.document.querySelector('#literal').textContent,literal);
+    assert.equal(t.document.querySelector('#mixed').textContent,'préutilize Use 3 items.');
+    assert.equal(t.document.querySelector('#caps').textContent,'SET UP THE EXTRA OPTIONS.');
+    assert.equal(t.document.querySelector('.material-icons').textContent,'commence');
+    assert.equal(button.textContent,'Start download');assert.equal(button.value,'commence');
+    assert.equal(link.textContent,'Extra information');assert.equal(link.getAttribute('href'),'/commence?mode=utilize');
+    assert.equal(t.document.querySelector('#link'),link);button.click();assert.equal(clicks,1);
+    t.toggle();assert.equal(main.innerHTML,original);button.click();assert.equal(clicks,2);
+    assert.deepEqual(t.errors,[]);
+  }finally{t.close();}
+});
+
+test('language, hidden state and publisher opt-outs update safely while simplification stays enabled',async()=>{
+  const t=setup('<html lang="en"><body><p>Currently, retain the additional configuration.</p></body></html>');
+  try{
+    const p=t.document.querySelector('p'),original=p.textContent;t.toggle();
+    assert.equal(p.textContent,'Now, keep the extra setup.');
+    p.setAttribute('data-simple-ignore','');await settle();assert.equal(p.textContent,original);
+    p.removeAttribute('data-simple-ignore');await settle();assert.equal(p.textContent,'Now, keep the extra setup.');
+    t.document.documentElement.lang='fr';await settle();assert.equal(p.textContent,original);
+    t.document.documentElement.lang='en';await settle();assert.equal(p.textContent,'Now, keep the extra setup.');
+    p.hidden=true;await settle();assert.equal(p.textContent,original);
+    p.hidden=false;await settle();assert.equal(p.textContent,'Now, keep the extra setup.');
+    t.toggle();assert.equal(p.textContent,original);assert.deepEqual(t.errors,[]);
+  }finally{t.close();}
+});
+
+test('open web components and their new content simplify and restore without changing controls or protected roots',async()=>{
+  const t=setup('<html lang="en"><body><main></main><div lang="fr" id="foreign"></div></body></html>');
+  try{
+    const d=t.document,host=d.createElement('article'),shadow=host.attachShadow({mode:'open'});
+    shadow.innerHTML='<p>Currently, utilize the additional configuration.</p><button aria-label="Commence download">Commence</button>';
+    d.querySelector('main').append(host);
+    const foreign=d.createElement('div'),foreignRoot=foreign.attachShadow({mode:'open'});foreignRoot.innerHTML='<p>Utilize this configuration.</p>';d.querySelector('#foreign').append(foreign);
+    const protectedHost=d.createElement('div');protectedHost.setAttribute('translate','no');const protectedRoot=protectedHost.attachShadow({mode:'open'});protectedRoot.innerHTML='<p>Utilize this name.</p>';d.body.append(protectedHost);
+    const closedHost=d.createElement('div'),closedRoot=closedHost.attachShadow({mode:'closed'});closedRoot.innerHTML='<p>Utilize the original words.</p>';d.body.append(closedHost);
+    let clicks=0;const button=shadow.querySelector('button');button.addEventListener('click',()=>clicks++);
+    t.toggle();assert.equal(shadow.querySelector('p').textContent,'Now, use the extra setup.');
+    assert.equal(button.getAttribute('aria-label'),'Start download');button.click();assert.equal(clicks,1);
+    assert.equal(foreignRoot.textContent,'Utilize this configuration.');assert.equal(protectedRoot.textContent,'Utilize this name.');assert.equal(closedRoot.textContent,'Utilize the original words.');
+    const added=d.createElement('p');added.textContent='We will retain approximately 6 items.';shadow.append(added);await settle();
+    assert.equal(added.textContent,'We will keep about 6 items.');
+    const lateHost=d.createElement('div'),lateRoot=lateHost.attachShadow({mode:'open'});lateRoot.innerHTML='<p>Configure the additional options.</p>';
+    d.querySelector('main').append(lateHost);await settle();assert.equal(lateRoot.textContent,'Set up the extra options.','new web components are discovered while the mode is on');
+    host.remove();await settle();assert.equal(added.textContent,'We will retain approximately 6 items.','detached components keep their original text');
+    d.querySelector('main').append(host);await settle();assert.equal(added.textContent,'We will keep about 6 items.');
+    t.toggle();assert.equal(shadow.querySelector('p').textContent,'Currently, utilize the additional configuration.');
+    assert.equal(button.getAttribute('aria-label'),'Commence download');assert.equal(added.textContent,'We will retain approximately 6 items.');
+    assert.equal(lateRoot.textContent,'Configure the additional options.');
+    button.click();assert.equal(clicks,2);assert.deepEqual(t.errors,[]);
+  }finally{t.close();}
+});
+
+test('accessible embedded pages and reloads simplify while cross-origin frame restrictions are skipped',async()=>{
+  const t=setup('<html lang="en"><body><main></main></body></html>');
+  try{
+    const frame=t.document.createElement('iframe');t.document.querySelector('main').append(frame);
+    const embedded=frame.contentDocument;embedded.documentElement.lang='en';embedded.body.innerHTML='<p>Utilize the additional configuration.</p>';
+    const blocked=t.document.createElement('iframe');t.document.body.append(blocked);
+    Object.defineProperty(blocked,'contentDocument',{get(){throw new t.w.DOMException('Different origin','SecurityError');}});
+    t.toggle();assert.equal(embedded.querySelector('p').textContent,'Use the extra setup.');
+    embedded.querySelector('p').firstChild.nodeValue='Currently, retain approximately 4 items.';await settle();
+    assert.equal(embedded.querySelector('p').textContent,'Now, keep about 4 items.');
+    embedded.documentElement.innerHTML='<head></head><body><p>Commence the additional step.</p></body>';
+    frame.dispatchEvent(new t.w.Event('load'));await settle();assert.equal(embedded.querySelector('p').textContent,'Start the extra step.');
+    t.toggle();assert.equal(embedded.querySelector('p').textContent,'Commence the additional step.');assert.deepEqual(t.errors,[]);
+  }finally{t.close();}
+});
+
+test('turning simplification off restores detached text and preserves newer publisher messages',()=>{
+  const t=setup('<html lang="en"><body><p id="detached">Utilize this configuration.</p><p id="changed">Commence now.</p></body></html>');
+  try{
+    const detached=t.document.querySelector('#detached'),changed=t.document.querySelector('#changed');t.toggle();
+    detached.remove();changed.firstChild.nodeValue='A new publisher message.';t.toggle();
+    assert.equal(detached.textContent,'Utilize this configuration.');assert.equal(changed.textContent,'A new publisher message.');
+    assert.deepEqual(t.errors,[]);
+  }finally{t.close();}
+});
+
 test('the current demo uses meaningful alternatives across every content section and restores them',async()=>{
   const html=read('dist/index.html');
   assert.ok(html.indexOf('src="simple-text.js"')<html.indexOf('src="widget.js?'),'wording loads before the widget');

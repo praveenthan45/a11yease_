@@ -14,14 +14,20 @@ let saving=Promise.resolve();
 function save(){saving=saving.catch(()=>{}).then(async()=>{await writeFile(filename+'.tmp',JSON.stringify(db),{mode:0o600});await rename(filename+'.tmp',filename);});return saving;}
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const id=()=>randomBytes(12).toString('hex');
-export function clientAccount(email){return (db.accounts||[]).find(account=>account.email===email)||null;}
-export async function createClientAccount(account){db.accounts||=[];if(db.accounts.some(item=>item.email===account.email))return null;const created={id:id(),...account,createdAt:Date.now()};db.accounts.push(created);await save();return {id:created.id,email:created.email,createdAt:created.createdAt};}
+export async function enforceAdminOnlyAccounts(){
+  let changed=!Array.isArray(db.accounts)||db.accounts.length>0;
+  db.accounts=[];
+  // Preserve installed website keys and payment records under the sole administrator.
+  for(const records of [db.sites,db.orders])for(const record of records||[]){
+    if(record.accountId!==null&&record.accountId!==undefined){record.accountId=null;changed=true;}
+  }
+  if(changed)await save();
+}
 const local=hostname=>['localhost','127.0.0.1','[::1]'].includes(hostname);
 function origin(value){const url=new URL(value);if(url.username||url.password||url.pathname!=='/'||url.search||url.hash||!(url.protocol==='https:'||(url.protocol==='http:'&&local(url.hostname))))throw Error('Enter an HTTPS website origin, for example https://client.com. HTTP is allowed only for localhost.');return url.origin;}
 function settings(){const key=process.env.RAZORPAY_KEY_ID||'';return {provider:'Razorpay',currency:'INR',amount:db.config.amount,days:db.config.days,configured:!!(key&&process.env.RAZORPAY_KEY_SECRET&&db.config.amount>0),mode:key.startsWith('rzp_live_')?'live':'test',webhookConfigured:!!process.env.RAZORPAY_WEBHOOK_SECRET};}
 function publicSite(site){const {accountId,...safe}=site;return {...safe,active:true};}
-function scopedSites(current){return current.role==='admin'?db.sites:db.sites.filter(site=>site.accountId===current.accountId);}
-function canAccessSite(site,current){return !!site&&(current.role==='admin'||site.accountId===current.accountId);}
+function canAccessSite(site,current){return !!site&&current.role==='admin';}
 function signature(value,secret,supplied){if(typeof supplied!=='string'||! /^[a-f0-9]{64}$/i.test(supplied))return false;return timingSafeEqual(createHmac('sha256',secret).update(value).digest(),Buffer.from(supplied,'hex'));}
 async function razor(endpoint,data){const response=await fetch('https://api.razorpay.com/v1/'+endpoint,{method:data?'POST':'GET',signal:AbortSignal.timeout(15000),headers:{Authorization:'Basic '+Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64'),'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined});const result=await response.json();if(!response.ok)throw Error('Razorpay request failed. Check your server credentials or retry.');return result;}
 function activate(order,payment){if(order.status==='paid'||order.status==='refunded')return;const site=db.sites.find(site=>site.id===order.siteId);if(!site)return;order.status='paid';order.paymentId=payment.id;order.paidAt=Date.now();order.previousPaidUntil=site.paidUntil||0;site.paidUntil=Math.max(Date.now(),site.paidUntil||0)+order.days*86400000;}
@@ -60,10 +66,11 @@ export async function platform(req,res,url,{current,sameOrigin,json,body}){
   }
   if(!route.startsWith('/api/platform/'))return false;
   if(!current)return json(res,401,{error:'Sign in to continue.'});
+  if(current.role!=='admin')return json(res,403,{error:'Administrator access only.'});
   if(req.method!=='GET'&&(!sameOrigin(req)||req.headers['x-csrf-token']!==current.csrf||!req.headers['content-type']?.startsWith('application/json')))return json(res,403,{error:'Request rejected.'});
   try{
   if(route==='/api/platform/overview'&&req.method==='GET'){
-      const sites=scopedSites(current),siteIds=new Set(sites.map(site=>site.id));
+      const sites=db.sites,siteIds=new Set(sites.map(site=>site.id));
       return json(res,200,{sites:sites.map(publicSite),keys:db.keys.filter(key=>siteIds.has(key.siteId)).map(({hash,...key})=>key),orders:db.orders.filter(order=>siteIds.has(order.siteId)).map(({accountId,...order})=>order),billing:settings()});
     }
     if(route==='/api/platform/config'&&req.method==='POST'){
@@ -74,7 +81,7 @@ export async function platform(req,res,url,{current,sameOrigin,json,body}){
     if(route==='/api/platform/sites'&&req.method==='POST'){
       const input=await body(req);if(typeof input.name!=='string'||!input.name.trim()||input.name.length>80||typeof input.origin!=='string')throw Error('Enter a website name and origin.');
       const siteOrigin=origin(input.origin);if(db.sites.some(site=>site.origin===siteOrigin))throw Error('This website origin is already registered.');if(db.sites.length>=1000)throw Error('Website limit reached.');
-      const site={id:id(),name:input.name.trim(),origin:siteOrigin,createdAt:Date.now(),paidUntil:0,accountId:current.role==='admin'?null:current.accountId};db.sites.push(site);await save();return json(res,201,{site:publicSite(site)});
+      const site={id:id(),name:input.name.trim(),origin:siteOrigin,createdAt:Date.now(),paidUntil:0,accountId:null};db.sites.push(site);await save();return json(res,201,{site:publicSite(site)});
     }
     if(route==='/api/platform/keys'&&req.method==='POST'){
       const input=await body(req),site=db.sites.find(site=>site.id===input.siteId);if(!canAccessSite(site,current))throw Error('Select a website in your workspace.');const mode=input.mode==='test'?'test':'live';
@@ -90,7 +97,7 @@ export async function platform(req,res,url,{current,sameOrigin,json,body}){
       const input=await body(req),site=db.sites.find(site=>site.id===input.siteId);if(!canAccessSite(site,current))throw Error('Select a website in your workspace.');
       const amount=db.config.amount,days=db.config.days,mode=settings().mode;
       const remote=await razor('orders',{amount,currency:'INR',receipt:id(),notes:{siteId:site.id}});
-      const order={id:remote.id,siteId:site.id,accountId:current.role==='admin'?null:current.accountId,amount,days,mode,status:'created',createdAt:Date.now()};db.orders.push(order);await save();return json(res,201,{order,keyId:process.env.RAZORPAY_KEY_ID});
+      const order={id:remote.id,siteId:site.id,accountId:null,amount,days,mode,status:'created',createdAt:Date.now()};db.orders.push(order);await save();return json(res,201,{order,keyId:process.env.RAZORPAY_KEY_ID});
     }
     if(route==='/api/platform/payments/verify'&&req.method==='POST'){
       const input=await body(req),order=db.orders.find(order=>order.id===input.razorpay_order_id),site=order&&db.sites.find(site=>site.id===order.siteId);if(!order||!canAccessSite(site,current))throw Error('Order not found in your workspace.');

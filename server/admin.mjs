@@ -5,13 +5,14 @@ import { readFile, stat } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { platform, clientAccount, createClientAccount } from './platform.mjs';
+import { platform, enforceAdminOnlyAccounts } from './platform.mjs';
 
 const scrypt = promisify(scryptCallback);
 const root = path.resolve(fileURLToPath(new URL('../dist/', import.meta.url)));
 const credentialPath = process.env.ADMIN_CREDENTIAL_FILE || fileURLToPath(new URL('../.local/admin-auth.json', import.meta.url));
 const credential = JSON.parse(await readFile(credentialPath, 'utf8'));
 if (typeof credential.username !== 'string' || !/^[a-f0-9]{32}$/.test(credential.salt) || !/^[a-f0-9]{128}$/.test(credential.hash)) throw new Error('Invalid admin credential file.');
+if(process.env.REMOVE_CLIENT_ACCOUNTS==='true')await enforceAdminOnlyAccounts();
 const sessions = new Map(), attempts = new Map();
 const cookieName = 'ae_admin_session';
 const sessionTtlMs = Math.max(100, Number(process.env.SESSION_TTL_MS) || 8 * 60 * 60 * 1000);
@@ -34,7 +35,7 @@ function session(req) {
   const token = req.headers.cookie?.split(';').map(value=>value.trim()).find(value=>value.startsWith(`${cookieName}=`))?.slice(cookieName.length+1);
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
   const key=digest(token),data=sessions.get(key);
-  if(data && Date.now()-data.createdAt>=sessionTtlMs){sessions.delete(key);return null;}
+  if(data && (data.role!=='admin'||Date.now()-data.createdAt>=sessionTtlMs)){sessions.delete(key);return null;}
   return data ? {key,...data} : null;
 }
 function sameOrigin(req) {
@@ -87,24 +88,6 @@ const server=http.createServer(async(req,res)=>{
     }
     if(pathname==='/health')return json(res,200,{ok:true});
     if(pathname==='/api/auth/session'&&req.method==='GET')return current?json(res,200,{username:current.username,role:current.role,email:current.email||null,csrf:current.csrf}):json(res,401,{error:'Sign in to continue.'});
-    if(pathname==='/api/auth/register'&&req.method==='POST') {
-      if(!sameOrigin(req)||!req.headers['content-type']?.startsWith('application/json'))return json(res,403,{error:'Request rejected.'});
-      if(current)return json(res,409,{error:'You are already signed in. Sign out before creating another account.'});
-      const key=req.socket.remoteAddress,now=Date.now();let counter=attempts.get(key);
-      if(!counter||now-counter.since>=900000){counter={since:now,count:0};attempts.set(key,counter);}
-      if(counter.count>=10||verifications>=8){res.setHeader('Retry-After','900');return json(res,429,{error:'Too many attempts. Try again in 15 minutes.'});}
-      counter.count++;
-      const input=await body(req),email=typeof input.email==='string'?input.email.trim().toLowerCase():'';
-      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254||typeof input.password!=='string'||input.password.length<12||input.password.length>256){input.password='';return json(res,400,{error:'Enter a valid email and a password with at least 12 characters.'});}
-      const salt=randomBytes(16).toString('hex');verifications++;let passwordHash;
-      try{passwordHash=await scrypt(input.password,Buffer.from(salt,'hex'),64,{N:32768,r:8,p:1,maxmem:64*1024*1024});}finally{verifications--;input.password='';}
-      const account=await createClientAccount({email,salt,hash:passwordHash.toString('hex')});
-      if(!account)return json(res,409,{error:'An account with this email already exists. Sign in instead.'});
-      if(current)sessions.delete(current.key);
-      if(sessions.size>=1000)sessions.delete(sessions.keys().next().value);
-      attempts.delete(key);const token=randomBytes(32).toString('hex');sessions.set(digest(token),{createdAt:Date.now(),csrf:randomBytes(32).toString('hex'),role:'client',accountId:account.id,email:account.email,username:account.email});
-      res.setHeader('Set-Cookie',cookie(token));return json(res,201,{ok:true});
-    }
     if(pathname==='/api/auth/login'&&req.method==='POST') {
       if(!sameOrigin(req)||!req.headers['content-type']?.startsWith('application/json'))return json(res,403,{error:'Request rejected.'});
       const key=req.socket.remoteAddress,now=Date.now();let counter=attempts.get(key);
@@ -112,17 +95,17 @@ const server=http.createServer(async(req,res)=>{
       if(counter.count>=10||verifications>=8){res.setHeader('Retry-After','900');return json(res,429,{error:'Too many attempts. Try again in 15 minutes.'});}
       counter.count++;
       const input=await body(req),identifier=typeof input.identifier==='string'?input.identifier.trim():typeof input.username==='string'?input.username.trim():'';
-      if(!identifier||identifier.length>254||typeof input.password!=='string'||input.password.length>256){input.password='';return json(res,400,{error:'Enter your email (or administrator username) and password.'});}
-      const isAdmin=identifier===credential.username,account=!isAdmin&&identifier.includes('@')?clientAccount(identifier.toLowerCase()):null;
-      const salt=isAdmin?credential.salt:account?.salt||'00000000000000000000000000000000',expected=isAdmin?credential.hash:account?.hash||'0'.repeat(128);
+      if(!identifier||identifier.length>100||typeof input.password!=='string'||input.password.length>256){input.password='';return json(res,400,{error:'Enter your administrator username and password.'});}
+      const isAdmin=identifier===credential.username;
+      const salt=isAdmin?credential.salt:'00000000000000000000000000000000',expected=isAdmin?credential.hash:'0'.repeat(128);
       verifications++;let actual;
       try{actual=await scrypt(input.password,Buffer.from(salt,'hex'),64,{N:32768,r:8,p:1,maxmem:64*1024*1024});}finally{verifications--;input.password='';}
       const validPassword=timingSafeEqual(actual,Buffer.from(expected,'hex'));
       const validAdmin=isAdmin&&timingSafeEqual(createHash('sha256').update(identifier).digest(),createHash('sha256').update(credential.username).digest());
-      if(!validPassword||(!validAdmin&&!account))return json(res,401,{error:'Email or password is incorrect.'});
+      if(!validPassword||!validAdmin)return json(res,401,{error:'Username or password is incorrect.'});
       attempts.delete(key);if(current)sessions.delete(current.key);
       if(sessions.size>=1000)sessions.delete(sessions.keys().next().value);
-      const token=randomBytes(32).toString('hex');sessions.set(digest(token),isAdmin?{createdAt:Date.now(),csrf:randomBytes(32).toString('hex'),role:'admin',username:credential.username}:{createdAt:Date.now(),csrf:randomBytes(32).toString('hex'),role:'client',accountId:account.id,email:account.email,username:account.email});
+      const token=randomBytes(32).toString('hex');sessions.set(digest(token),{createdAt:Date.now(),csrf:randomBytes(32).toString('hex'),role:'admin',username:credential.username});
       res.setHeader('Set-Cookie',cookie(token));return json(res,200,{ok:true});
     }
     if(pathname==='/api/auth/logout'&&req.method==='POST') {

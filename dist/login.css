@@ -106,25 +106,16 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--login-blue); ou
 .sign-in .submit:hover { background: #1c51e1; box-shadow: 0 4px 14px #2462ff30; }
 .submit svg { width: clamp(22px, 1.5vw, 30px); height: clamp(22px, 1.5vw, 30px); flex-shrink: 0; }
 button:disabled { opacity: .6; cursor: wait; }
-.auth-divider { display: flex; align-items: center; gap: 12px; margin: 24px 0 0; }
-.auth-divider::before, .auth-divider::after { content: ''; height: 1px; background: #e5ecf5; flex: 1; }
-.auth-mode-switch {
-  max-width: 100%; padding: 4px 0; border: 0; border-radius: 3px; color: #205bef;
-  background: transparent; font-size: clamp(11px, .89vw, 17px); font-weight: 650; line-height: 1.6;
-  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
-}
-.auth-mode-switch:hover { color: #123fb0; }
 .session-note { display: flex; align-items: flex-start; gap: 12px; margin-top: 28px; color: #627b9e; }
 .session-note svg { width: clamp(25px, 1.7vw, 33px); height: clamp(25px, 1.7vw, 33px); flex-shrink: 0; }
 .session-note p { margin: 0; font-size: clamp(10px, .73vw, 14px); line-height: 1.6; }
 .session-note span { color: #6a80a0; }
-.field-hint { font-size: clamp(12px, .94vw, 18px); line-height: 1.55; color: var(--login-muted); margin: clamp(12px, .94vw, 18px) 0 0; }
-#login-error, #register-error {
+#login-error {
   background: #fff0f0; color: #991b1b; border: 1px solid #f4caca; padding: 10px 12px;
   border-radius: 8px; font-size: 12px; margin: 14px 0 0; overflow-wrap: anywhere;
 }
-#login-status, #register-status { font-size: 12px; color: var(--login-muted); margin: 10px 0 0; }
-#login-status:empty, #register-status:empty { display: none; }
+#login-status { font-size: 12px; color: var(--login-muted); margin: 10px 0 0; }
+#login-status:empty { display: none; }
 @media (min-width: 1200px) and (min-height: 760px) {
   .sign-in { margin-top: 28px; }
 }
@@ -139,7 +130,6 @@ button:disabled { opacity: .6; cursor: wait; }
   label { font-size: 11px; margin: 12px 0 5px; }
   input, .password-field button { height: 38px; }
   .sign-in .submit { min-height: 40px; margin-top: 20px; padding: 8px 16px; }
-  .auth-divider { margin-top: 20px; }
   .session-note { margin-top: 24px; }
 }
 @media (max-width: 800px) {
@@ -162,8 +152,6 @@ button:disabled { opacity: .6; cursor: wait; }
   .login-layout { padding-inline: 20px; }
   .sign-in { padding: 26px 22px; }
   h2 { font-size: 30px; }
-  .auth-divider { gap: 8px; }
-  .auth-mode-switch { font-size: 10px; }
   .session-note p { font-size: 10px; }
 }
 /* Fit the card to the available screen height, including browser zoom. */
@@ -177,7 +165,6 @@ button:disabled { opacity: .6; cursor: wait; }
   label { font-size: 11px; margin: 10px 0 5px; }
   input, .password-field button { height: 38px; }
   .sign-in .submit { min-height: 40px; padding: 8px 16px; margin-top: 18px; }
-  .auth-divider { margin-top: 16px; }
   .session-note { margin-top: 18px; }
 }
 @media (max-height: 600px) {
@@ -195,7 +182,6 @@ button:disabled { opacity: .6; cursor: wait; }
   .session-note { display: none; }
 }
 @media (max-width: 800px) and (max-height: 600px) {
-  .field-hint { display: none; }
 }
 @media (min-width: 801px) and (max-height: 540px) {
   :root { --login-photo-offset: 160px; }

@@ -43,7 +43,11 @@ currently work without payment. No Razorpay credentials are required.
 ## Verify after upload
 
 - HTTPS works and /admin redirects signed-out visitors to /login.
-- Register two client accounts; each sees only its own websites and keys.
+- Only the configured administrator can sign in. The login page has no account
+  registration form, and `/api/auth/register` returns 404. Former client accounts
+  cannot sign in. Removing their stored credentials requires an explicitly
+  authorized `REMOVE_CLIENT_ACCOUNTS=true` startup; websites, keys and payment
+  records are retained. Leave this flag unset to preserve the live database.
 - Register the exact live client HTTPS origin, including www if used.
 - Generate a Live key without payment and copy the snippet. Its script URL must
   use your public HTTPS domain, never localhost.
@@ -53,7 +57,7 @@ currently work without payment. No Razorpay credentials are required.
 - Revoke the key; a new client page load must no longer load through embed.js.
 - Stop/start the app: accounts, sites and keys persist. Sign-in is required again.
 
-Sessions expire after 8 hours and on backend restart. If login or registration
+Sessions expire after 8 hours and on backend restart. If login
 starts returning 429 behind Passenger, ask your host about the actual client IP
 exposed to Node; the app deliberately does not trust arbitrary forwarded headers.
 

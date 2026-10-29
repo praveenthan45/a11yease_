@@ -108,6 +108,15 @@ when payments are in use. Customer website origins remain unchanged.
 
 ## Updates
 
+The admin-only login update removes public registration and client logins.
+Before restarting, verify that `ADMIN_CREDENTIAL_FILE` contains the intended
+administrator credentials. Stored account records are preserved by default.
+Only an explicitly authorized startup with `REMOVE_CLIENT_ACCOUNTS=true` removes
+legacy client accounts from `PLATFORM_DATA_DIR/platform.json`; registered websites,
+installed key hashes and payment records are retained. A local cleanup does not
+modify live data. Deploy the login assets and backend together when authorized,
+then verify `/login` and the existing website embeds.
+
 The checked-in `dist` contains the release assets, so a VPS update only needs:
 
 ```sh

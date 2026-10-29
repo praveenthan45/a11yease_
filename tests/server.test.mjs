@@ -1,22 +1,26 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { randomBytes, scryptSync } from 'node:crypto';
+import { randomBytes, scryptSync, createHash } from 'node:crypto';
 
-test('HTTP deployment: login, account isolation, payment-free keys, assets, persistence and session expiry', { timeout: 60000 }, async () => {
+test('HTTP deployment: admin-only login, removal of legacy accounts, preserved keys, persistence and session expiry', { timeout: 60000 }, async () => {
   const workspace = process.env.TEST_APP_ROOT || fileURLToPath(new URL('../', import.meta.url));
   const directory = await mkdtemp(path.join(workspace, '.server-test-'));
   const password = randomBytes(18).toString('hex');
   const salt = randomBytes(16);
   await writeFile(path.join(directory, 'auth.json'), JSON.stringify({ username: 'deployment-test', salt: salt.toString('hex'), hash: scryptSync(password, salt, 64, { N: 32768, r: 8, p: 1, maxmem: 67108864 }).toString('hex') }));
+  const clientPassword=randomBytes(18).toString('hex'),clientSalt=randomBytes(16);
+  const oldToken=`ae_live_${randomBytes(32).toString('hex')}`;
+  const legacy={accounts:[{id:'legacy-client',email:'first@example.test',salt:clientSalt.toString('hex'),hash:scryptSync(clientPassword,clientSalt,64,{N:32768,r:8,p:1,maxmem:67108864}).toString('hex')}],sites:[{id:'legacy-site',name:'Existing website',origin:'https://legacy.example',createdAt:Date.now(),paidUntil:0,accountId:'legacy-client'}],keys:[{id:'legacy-key',siteId:'legacy-site',mode:'live',prefix:oldToken.slice(0,17)+'…',hash:createHash('sha256').update(oldToken).digest('hex'),createdAt:Date.now(),revokedAt:null}],orders:[{id:'legacy-order',siteId:'legacy-site',accountId:'legacy-client',amount:100,days:1,mode:'live',status:'created',createdAt:Date.now()}],config:{amount:200000,days:30}};
+  await writeFile(path.join(directory,'platform.json'),JSON.stringify(legacy));
   const children = new Set();
   async function start(extra = {}) {
     const child = spawn(process.execPath, [process.env.TEST_SERVER_ENTRY || 'server/admin.mjs'], {
       cwd: workspace,
-      env: { ...process.env, PORT: '0', BIND_HOST: '127.0.0.1', ADMIN_CREDENTIAL_FILE: path.join(directory, 'auth.json'), PLATFORM_DATA_DIR: directory, COOKIE_SECURE: 'true', PUBLIC_ORIGIN: 'https://app.example', RAZORPAY_KEY_ID: '', RAZORPAY_KEY_SECRET: '', RAZORPAY_WEBHOOK_SECRET: '', ...extra },
+      env: { ...process.env, PORT: '0', BIND_HOST: '127.0.0.1', ADMIN_CREDENTIAL_FILE: path.join(directory, 'auth.json'), PLATFORM_DATA_DIR: directory, REMOVE_CLIENT_ACCOUNTS: 'true', COOKIE_SECURE: 'true', PUBLIC_ORIGIN: 'https://app.example', RAZORPAY_KEY_ID: '', RAZORPAY_KEY_SECRET: '', RAZORPAY_WEBHOOK_SECRET: '', ...extra },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     children.add(child);
@@ -64,10 +68,23 @@ test('HTTP deployment: login, account isolation, payment-free keys, assets, pers
     return cookie;
   }
   try {
+    active=await start({REMOVE_CLIENT_ACCOUNTS:'false'});
+    assert.equal(JSON.parse(await readFile(path.join(directory,'platform.json'),'utf8')).accounts.length,1,'existing account data is not deleted without an explicit cleanup flag');
+    assert.equal((await post('/api/auth/login',{identifier:'first@example.test',password:clientPassword})).status,401,'client authentication is disabled even when stored records are retained');
+    await stop(active.child);
     active = await start();
+    const migrated=JSON.parse(await readFile(path.join(directory,'platform.json'),'utf8'));
+    assert.deepEqual(migrated.accounts,[],'legacy account credentials are removed from persistent storage');
+    assert.deepEqual(migrated.keys,legacy.keys,'existing installed keys are preserved');
+    assert.equal(migrated.sites[0].accountId,null);assert.equal(migrated.orders[0].accountId,null);
     assert.equal((await request('/health')).status, 200);
     assert.equal((await request('/admin', { authenticated: false })).status, 303);
     assert.equal((await request('/api/platform/overview', { authenticated: false })).status, 401);
+    const loginPage=await request('/login',{authenticated:false});
+    assert.equal(loginPage.status,200);assert.match(loginPage.text,/Admin username/);
+    assert.doesNotMatch(loginPage.text,/client-register|auth-mode-switch|Create an account|new-password/);
+    assert.equal((await post('/api/auth/register',{email:'new@example.test',password:clientPassword})).status,404);
+    assert.equal((await post('/api/auth/login',{identifier:'first@example.test',password:clientPassword})).status,401,'former clients cannot sign in');
     assert.equal((await post('/api/auth/login', { identifier: 'deployment-test', password }, { headers: { Origin: 'https://evil.example' } })).status, 403);
     assert.equal((await post('/api/auth/login', { identifier: 'deployment-test', password: 'wrong' })).status, 401);
     await login();
@@ -79,13 +96,9 @@ test('HTTP deployment: login, account isolation, payment-free keys, assets, pers
       assert.equal(result.status, 200, asset);
       assert.equal(result.headers.get('access-control-allow-origin'), '*');
     }
-    const clientPassword = randomBytes(18).toString('hex');
-    await post('/api/auth/logout', {}); cookie = ''; csrf = '';
-    const registered = await post('/api/auth/register', { email: 'first@example.test', password: clientPassword });
-    assert.equal(registered.status, 201);
-    cookie = registered.headers.get('set-cookie').split(';')[0];
-    csrf = (await request('/api/auth/session')).value.csrf;
-    assert.equal((await post('/api/platform/config', { amount: 100, days: 1 })).status, 403);
+    assert.equal((await request('/api/auth/session')).value.role,'admin');
+    assert.equal((await post('/api/auth/register',{email:'second@example.test',password:clientPassword})).status,404);
+    assert.equal((await post('/api/platform/config', { amount: 100, days: 1 },{headers:{'X-CSRF-Token':'invalid'}})).status,403);
     const site = await post('/api/platform/sites', { name: 'Live client', origin: 'https://client.example' });
     assert.equal(site.status, 201);
     const generated = await post('/api/platform/keys', { siteId: site.value.site.id, mode: 'live' });
@@ -95,19 +108,18 @@ test('HTTP deployment: login, account isolation, payment-free keys, assets, pers
     assert.equal((await validate('https://client.example')).status, 200);
     assert.equal((await validate('https://evil.example')).status, 403);
     assert.equal((await request('/api/widget/validate', { method: 'OPTIONS', authenticated: false, headers: { Origin: 'https://client.example', 'Access-Control-Request-Headers': 'x-accessease-key' } })).status, 204);
+    assert.equal((await request('/api/widget/validate',{authenticated:false,headers:{Origin:'https://legacy.example','X-AccessEase-Key':oldToken}})).status,200,'previous client installations keep working');
     const firstCookie = cookie;
     await post('/api/auth/logout', {}); cookie = ''; csrf = '';
-    const second = await post('/api/auth/register', { email: 'second@example.test', password: clientPassword });
-    assert.equal(second.status, 201); cookie = second.headers.get('set-cookie').split(';')[0];
-    csrf = (await request('/api/auth/session')).value.csrf;
-    assert.equal((await request('/api/platform/overview')).value.sites.length, 0);
-    assert.equal((await post('/api/platform/keys', { siteId: site.value.site.id, mode: 'live' })).status, 400);
+    assert.equal((await post('/api/auth/login',{identifier:'first@example.test',password:clientPassword})).status,401);
+    assert.equal((await post('/api/platform/keys', { siteId: site.value.site.id, mode: 'live' })).status, 401);
     assert.equal((await request('/api/auth/session', { headers: { Cookie: firstCookie } })).status, 401);
     await assert.rejects(start(), /already in use/);
     await stop(active.child); active = await start();
     assert.equal((await request('/api/auth/session')).status, 401);
-    await login('first@example.test', clientPassword);
-    assert.equal((await request('/api/platform/overview')).value.keys.length, 1);
+    await login();
+    assert.equal((await request('/api/platform/overview')).value.keys.length, 2);
+    assert.deepEqual(JSON.parse(await readFile(path.join(directory,'platform.json'),'utf8')).accounts,[],'cleanup remains applied after restart');
     assert.equal((await validate('https://client.example')).status, 200);
     assert.equal((await post('/api/platform/keys/revoke', { id: key.id })).status, 200);
     assert.equal((await validate('https://client.example')).status, 403);

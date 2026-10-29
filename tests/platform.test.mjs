@@ -4,14 +4,14 @@ import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-test('live keys work without payment while origin, ownership and revocation remain enforced', async () => {
+test('only the administrator manages live keys while origin and revocation remain enforced', async () => {
   const workspace = fileURLToPath(new URL('../', import.meta.url));
   const directory = await mkdtemp(path.join(workspace, '.platform-test-'));
   const previous = process.env.PLATFORM_DATA_DIR;
   process.env.PLATFORM_DATA_DIR = directory;
   try {
     const { platform } = await import('../server/platform.mjs');
-    const owner = { role: 'client', accountId: 'owner', csrf: 'test-csrf' };
+    const owner = { role: 'admin', username: 'deployment-test', csrf: 'test-csrf' };
     const another = { role: 'client', accountId: 'another', csrf: 'test-csrf' };
     async function request(route, { method = 'GET', data, headers = {}, current = owner, sameOrigin = true } = {}) {
       const result = { headers: {} };
@@ -37,7 +37,9 @@ test('live keys work without payment while origin, ownership and revocation rema
     assert.equal(registered.value.site.paidUntil, 0);
     assert.equal(registered.value.site.active, true);
     const siteId = registered.value.site.id;
-    assert.equal((await post('keys', { siteId, mode: 'live' }, { current: another })).status, 400);
+    assert.equal((await request('/api/platform/overview',{current:another})).status,403);
+    assert.equal((await post('sites',{name:'Blocked',origin:'https://blocked.example'},{current:another})).status,403);
+    assert.equal((await post('keys', { siteId, mode: 'live' }, { current: another })).status, 403);
     assert.equal((await post('keys', { siteId, mode: 'live' }, { headers: { 'x-csrf-token': 'invalid' } })).status, 403);
     assert.equal((await post('keys', { siteId, mode: 'live' }, { sameOrigin: false })).status, 403);
     assert.equal((await post('keys', { siteId, mode: 'test' })).status, 400);
@@ -81,7 +83,7 @@ test('live keys work without payment while origin, ownership and revocation rema
     assert.equal(status, 200);
     for (let i = 0; i < 4; i++) assert.equal((await post('keys', { siteId, mode: 'live' })).status, 201);
     assert.equal((await post('keys', { siteId, mode: 'live' })).status, 400);
-    assert.equal((await post('keys/revoke', { id }, { current: another })).status, 400);
+    assert.equal((await post('keys/revoke', { id }, { current: another })).status, 403);
     assert.equal((await post('keys/revoke', { id })).status, 200);
     assert.equal((await validate(token)).status, 403);
     assert.equal((await post('keys', { siteId, mode: 'live' })).status, 201);
