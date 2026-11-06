@@ -1,15 +1,15 @@
-.admin-logout{background:transparent;color:#092644;border:1px solid #cbd5e1;border-radius:10px;padding:10px 15px;font:600 13px/1.5 Inter,Arial,sans-serif;cursor:pointer;white-space:nowrap}.admin-logout:focus-visible{outline:3px solid #2563eb;outline-offset:3px}.admin-logout:disabled{opacity:.6}
-.admin-workspace-link{font:600 12px Inter,Arial,sans-serif;color:#2563eb;text-decoration:none;padding:10px;white-space:nowrap}
+.admin-logout{background:transparent;color:var(--site-ink);border:1px solid var(--site-border);border-radius:10px;padding:10px 15px;font:600 13px/1.5 Inter,Arial,sans-serif;cursor:pointer;white-space:nowrap}.admin-logout:focus-visible{outline:3px solid var(--site-accent);outline-offset:3px}.admin-logout:disabled{opacity:.6}
+.admin-workspace-link{font:600 12px Inter,Arial,sans-serif;color:var(--site-accent);text-decoration:none;padding:10px;white-space:nowrap}
 /* Match the dashboard's logout icon and keep hover contrast clear. */
 header button.admin-logout {
   display: inline-grid; place-items: center; flex: 0 0 44px;
   width: 44px; height: 44px; min-height: 44px; padding: 8px;
-  border: 1px solid #dce6f4; border-radius: 10px;
-  background: #fff; color: #111827; line-height: 1;
+  border: 1px solid var(--site-border); border-radius: 10px;
+  background: #fff; color: var(--site-ink); line-height: 1;
 }
 header button.admin-logout svg { display: block; width: 28px; height: 28px; }
 header button.admin-logout:hover,
 header button.admin-logout:focus-visible {
-  background: #e8f0ff; color: #0a5fff; border-color: #b8d0fa;
+  background: var(--site-soft); color: var(--site-accent); border-color: var(--site-border-strong);
 }
-header button.admin-logout:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+header button.admin-logout:focus-visible { outline: 3px solid var(--site-accent); outline-offset: 3px; }

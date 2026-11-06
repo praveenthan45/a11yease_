@@ -1,0 +1,38 @@
+/* pluga11y colors for the software pages. The embedded widget has its own palette. */
+:root[data-site-theme] {
+  --site-background: #f7f4fc;
+  --site-tint: #f0eafa;
+  --site-soft: #e8defa;
+  --site-border: #ddd3ed;
+  --site-border-strong: #b9a3df;
+  --site-ink: #171c42;
+  --site-muted: #625477;
+  --site-accent: #6335b6;
+  --site-accent-hover: #4c278f;
+  --site-focus: #7044c6;
+  --site-blue: #2854b3;
+  --site-action: linear-gradient(110deg, var(--site-accent), var(--site-blue));
+  --site-action-hover: linear-gradient(110deg, var(--site-accent-hover), #20418f);
+  --site-wash: linear-gradient(135deg, #eaddfa, #e2ebff);
+  --site-shadow: #38236b29;
+
+  /* The shared page controls use these aliases. The shadow root sets its own values. */
+  --ae-bg: var(--site-background);
+  --ae-text: var(--site-ink);
+  --ae-muted: var(--site-muted);
+  --ae-border: var(--site-border);
+  --ae-primary: var(--site-accent);
+  --ae-primary-hover: var(--site-accent-hover);
+  --ae-navy: var(--site-ink);
+  --ae-tint: var(--site-tint);
+}
+
+/* The server also loads the baseline controls on the signed-in demo pages. */
+[data-site-theme] :is(.lab-header > button:not(.admin-logout), .lab-actions > button:not(.secondary), .header .button, .hero .button, .section .button) {
+  background: var(--site-accent);
+  background-image: var(--site-action);
+}
+
+[data-site-theme] :is(.lab-header > button:not(.admin-logout), .lab-actions > button:not(.secondary), .header .button, .hero .button, .section .button):hover {
+  background-image: var(--site-action-hover);
+}
