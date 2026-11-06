@@ -91,10 +91,12 @@ test('HTTP deployment: admin-only login, removal of legacy accounts, preserved k
     assert.equal((await request('/admin')).status, 200);
     assert.equal((await request('/')).status, 200);
     assert.equal((await request('/media/silent.mp4', { headers: { Range: 'bytes=0-99' } })).status, 206);
-    for (const asset of ['/embed.js', '/widget.js', '/team-features.js', '/accessibility-badge.png']) {
+    for (const asset of ['/embed.js', '/widget.js', '/team-features.js', '/accessibility-badge.png', '/pluga11y-icon.svg', '/pluga11y-wordmark.svg', '/pluga11y-logo.jpeg']) {
       const result = await request(asset, { authenticated: false });
       assert.equal(result.status, 200, asset);
       assert.equal(result.headers.get('access-control-allow-origin'), '*');
+      if(asset.endsWith('.svg'))assert.match(result.headers.get('content-type'),/^image\/svg\+xml/);
+      if(asset.endsWith('.jpeg'))assert.equal(result.headers.get('content-type'),'image/jpeg');
     }
     assert.equal((await request('/api/auth/session')).value.role,'admin');
     assert.equal((await post('/api/auth/register',{email:'second@example.test',password:clientPassword})).status,404);

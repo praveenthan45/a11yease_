@@ -12,7 +12,7 @@ and account data. Node 22/24, HTTPS, private persistent storage and a single app
 worker are required. `npm run test:server` runs isolated HTTP integration checks;
 it needs permission to connect to its temporary localhost server.
 
-# A11yease — unified team widget
+# pluga11y — unified team widget
 
 The Docker demo now combines all four developers' modules in **one launcher and one searchable panel with 61 controls**. Reset, preference import/export and saved profiles cover the combined settings. The original projects remain available for development; the demo does not load their separate launchers.
 
@@ -47,7 +47,7 @@ The default page is an accessibility playground with a guide for all 45 settings
 - Navin: 11 visual, motion, page audit, announcement and form integration panels from `AssistAccess/src/accessibility/`. Its reset, preferences and profiles are replaced by the shared controls.
 - Shared: import/export and profiles in `integration/index.jsx`. Vite builds the React dependency and reused modules into `dist/team-features.js`.
 
-Copy `widget.js`, `team-features.js`, `accessibility-badge.png` and `OpenDyslexic-OFL.txt` from `dist` into the same assets folder. Load only `widget.js`; it loads the team bundle relative to its own URL:
+Copy `widget.js`, `team-features.js`, `accessibility-badge.png`, `pluga11y-wordmark.svg` and `OpenDyslexic-OFL.txt` from `dist` into the same assets folder. Load only `widget.js`; it loads the team bundle relative to its own URL:
 
 ```html
 <script src="/assets/widget.js" defer></script>
@@ -132,7 +132,7 @@ The repository retains the original projects alongside the unified build:
 
 - **Visual Accessibility Widget (React + Vite):** the new project is in [`visual-accessibility-widget/`](visual-accessibility-widget/). It includes a live website demo, a standalone embeddable SDK, text sizing, appearance settings, color vision assistance and reading tools. See its [English setup and integration guide](visual-accessibility-widget/README.md).
 - **Sudhin Standalone Widget:** the standalone script is `accessibility-widget.js`, with its demo in `demo.html`. See [Sudhin setup and feature guide](SUDHIN.md) and [standalone distribution](standalone-widget/README.md).
-- **A11yease:** the existing static demo and Docker setup remain in the repository root. Its instructions are retained below.
+- **pluga11y:** the existing static demo and Docker setup remain in the repository root. Its instructions are retained below.
 
 To start the Visual Accessibility Widget:
 
@@ -144,9 +144,9 @@ npm run dev
 
 ---
 
-# A11yease
+# pluga11y
 
-The separately developed React accessibility toolbar is in [AssistAccess/](AssistAccess/README.md), with its [project audit](AssistAccess/PROJECT-AUDIT.md). The instructions below describe the original static A11yease demo served by this repository's Docker setup.
+The separately developed React accessibility toolbar is in [AssistAccess/](AssistAccess/README.md), with its [project audit](AssistAccess/PROJECT-AUDIT.md). The instructions below describe the original static pluga11y demo served by this repository's Docker setup.
 
 A sample learning website with a reusable accessibility widget offering 13 settings. Open `dist/index.html` through a local static HTTP server. The floating button stays in the bottom right corner.
 
@@ -210,3 +210,9 @@ Voice startup is monitored even when the browser never emits a start event. If s
 Run `node tests/voice-commands.test.cjs` for simulated recognition and command tests. Serve the project root and open `tests/voice-click-check.html` to exercise the actual widget with simulated recognized transcripts. This fixture never uses the microphone. Live speech recognition still requires microphone permission and a supported browser service.
 
 The CC samples are local MP4 files in `dist/media`: a 16-second spoken video, a 10-second silent video with no audio stream, and an 18-second video combining spoken and quiet sections. Each has its own local WebVTT caption track. Nature footage comes from the CC0 flower clip at the MDN interactive examples media host; the spoken passages use synthetic English narration. Once served, these samples do not need an external video connection. `tests/create-caption-samples.ps1` regenerates the MP4 assets using Windows speech synthesis and FFmpeg.
+
+## pluga11y branding
+
+The widget wordmark, sign-in page, dashboard and preview branding use the supplied pluga11y artwork. `dist/pluga11y-logo.jpeg` preserves the original image. The icon and wordmark SVGs embed that image with separate viewports, so their artwork stays faithful and can load on client websites. Include `pluga11y-wordmark.svg` and the optimized `accessibility-badge.png` beside `widget.js` when copying the widget assets; the company icon SVG is used by the software pages. Existing `window.AccessEase` APIs, saved preference keys, import formats and `X-AccessEase-Key` installation headers remain compatible.
+
+The floating launcher retains the standard blue accessibility icon in the optimized 256px `accessibility-badge.png`. Company logos use the supplied pluga11y artwork with transparent backgrounds. API-key revocation asks for confirmation; No or Escape cancels without sending a revoke request.

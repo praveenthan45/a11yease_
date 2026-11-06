@@ -196,3 +196,7 @@
   .panel :is(button,input,select,textarea,summary,a[href]):focus-visible{outline-color:Highlight}
   .panel input[type=range]{appearance:auto}
 }
+
+/* Keep the familiar accessibility launcher separate from company branding. */
+.launcher,.launcher:hover{background:transparent;border:0;border-radius:50%;padding:0}
+.launcher .launcher-badge{padding:0;border-radius:50%;object-fit:contain}

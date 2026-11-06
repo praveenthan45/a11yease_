@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id);
 let accountUsername='Admin',accountEmail='',accountRole='admin';
 let csrf='',data={sites:[],keys:[],orders:[],billing:{}},pendingPayment=null;
-const titles={overview:['Overview','Dashboard','Connect your clients’ websites. Manage their keys. Make room for everyone.'],websites:['Websites','Websites','Register and manage the websites connected to your accessibility toolkit.'],keys:['API keys','API keys','Generate, install and manage domain-restricted website keys.'],billing:['Billing & payments','Billing & payments','Activate website access through a verified Razorpay payment.'],integration:['Installation','Installation','Bring A11yEase to a client website with a single embed code.']};
+const titles={overview:['Overview','Dashboard','Connect your clients’ websites. Manage their keys. Make room for everyone.'],websites:['Websites','Websites','Register and manage the websites connected to your accessibility toolkit.'],keys:['API keys','API keys','Generate, install and manage domain-restricted website keys.'],billing:['Billing & payments','Billing & payments','Activate website access through a verified Razorpay payment.'],integration:['Installation','Installation','Bring pluga11y to a client website with a single embed code.']};
 function notice(message,error=false){$('notice').textContent=message;$('notice').classList.toggle('error',error);$('notice').hidden=false;}
 function view(name){if(!titles[name])name='overview';document.querySelectorAll('[data-page]').forEach(section=>section.hidden=section.dataset.page!==name);document.querySelectorAll('.nav-item').forEach(button=>{button.classList.toggle('active',button.dataset.view===name);if(button.dataset.view===name)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');});document.body.dataset.adminView=name;$('current-view').textContent=titles[name][0];if(name==='overview')$('page-title').textContent=`Welcome back, ${accountUsername}!`;else $('page-title').innerHTML=titles[name][1];$('page-description').textContent=titles[name][2];history.replaceState(null,'','#'+name);}
 document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>view(button.dataset.view)));
@@ -42,7 +42,7 @@ function render(){
   sitesTable($('overview-sites'),true);sitesTable($('website-list'));
   for(const name of ['key-site','payment-site']){const select=$(name),previous=select.value;select.replaceChildren();if(!data.sites.length){const option=el('option','Register a website first');option.value='';select.append(option);}data.sites.forEach(site=>{const option=el('option',`${site.name} · ${site.origin}`);option.value=site.id;select.append(option);});if(data.sites.some(site=>site.id===previous))select.value=previous;}
   if(!data.keys.length)empty($('key-list'),'No website keys yet.','Register a website and generate a live key without payment, or a localhost test key.');
-  else table($('key-list'),['Website','Key','Environment','Status','Actions'],data.keys.map((key,index)=>({key,index,state:key.revokedAt?'Revoked':key.mode==='live'&&!website(key.siteId)?.active?'Inactive':'Active'})).sort((a,b)=>({Active:0,Inactive:1,Revoked:2}[a.state]-{Active:0,Inactive:1,Revoked:2}[b.state])||Number(b.key.createdAt||0)-Number(a.key.createdAt||0)||a.index-b.index).map(({key,state})=>{const keyCell=el('div');keyCell.append(el('code',key.prefix),el('small',`Created ${new Date(key.createdAt).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}`));return [nameCell(website(key.siteId)),keyCell,badge(key.mode),badge(state,state==='Active'?'good':''),key.revokedAt?el('span','—'):action('Revoke',()=>revoke(key),'secondary revoke')];}));
+  else table($('key-list'),['Website','Key','Environment','Status','Actions'],data.keys.map((key,index)=>({key,index,state:key.revokedAt?'Revoked':key.mode==='live'&&!website(key.siteId)?.active?'Inactive':'Active'})).sort((a,b)=>({Active:0,Inactive:1,Revoked:2}[a.state]-{Active:0,Inactive:1,Revoked:2}[b.state])||Number(b.key.createdAt||0)-Number(a.key.createdAt||0)||a.index-b.index).map(({key,state})=>{const keyCell=el('div');keyCell.append(el('code',key.prefix),el('small',`Created ${new Date(key.createdAt).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}`));return [nameCell(website(key.siteId)),keyCell,badge(key.mode),badge(state,state==='Active'?'good':''),key.revokedAt?el('span','—'):action('Revoke',event=>revoke(key,event.currentTarget),'secondary revoke')];}));
   const bill=data.billing;$('plan-price').textContent=bill.amount?money(bill.amount):'Price not set';$('plan-duration').textContent=`per website · ${bill.days||30} days · one-time payment`;$('price-amount').value=bill.amount?bill.amount/100:'';$('price-days').value=bill.days||30;
   $('billing-status').textContent=bill.configured?(bill.mode==='live'?'Live connected':'Test mode'):'Setup required';$('billing-status').className='chip '+(bill.configured?'good':'');
   $('pay-button').disabled=!bill.configured||!data.sites.length;$('pay-button').textContent=bill.mode==='live'?'Pay with Razorpay ↗':'Open Razorpay test checkout ↗';
@@ -71,7 +71,38 @@ $('key-form').addEventListener('submit',event=>{event.preventDefault();submittin
 $('close-key').addEventListener('click',()=>$('new-key-dialog').close());
 $('new-key-dialog').addEventListener('close',()=>{$('generated-key').value='';$('generated-snippet').value='';});
 $('copy-generated').addEventListener('click',async()=>{$('key-copy-status').textContent=await copy($('generated-snippet').value)?'Copied. Save the snippet in your website source.':'Select and copy the snippet manually.';});
-async function revoke(key){try{await api('keys/revoke',{id:key.id});await refresh();notice('Key revoked. It will no longer load the widget on new page loads.');}catch(error){notice(error.message,true);}}
+let pendingRevoke=null,revokeInFlight=false,revokeOpener=null;
+const revokeDialog=$('revoke-key-dialog');
+function revoke(key,opener){
+  if(revokeInFlight||revokeDialog.open)return;
+  pendingRevoke=key;revokeOpener=opener||document.activeElement;
+  $('revoke-key-website').textContent=website(key.siteId)?.name||'Website';
+  $('revoke-key-prefix').textContent=key.prefix;
+  $('revoke-key-error').textContent='';$('revoke-key-error').hidden=true;
+  revokeDialog.showModal();
+}
+function revokeBusy(busy){
+  revokeInFlight=busy;revokeDialog.setAttribute('aria-busy',String(busy));
+  for(const id of ['revoke-key-yes','revoke-key-no','revoke-key-close'])$(id).disabled=busy;
+  $('revoke-key-yes').textContent=busy?'Revoking…':'Yes, revoke';
+}
+for(const id of ['revoke-key-no','revoke-key-close'])$(id).addEventListener('click',()=>{if(!revokeInFlight)revokeDialog.close();});
+revokeDialog.addEventListener('cancel',event=>{if(revokeInFlight)event.preventDefault();});
+revokeDialog.addEventListener('close',()=>{
+  pendingRevoke=null;$('revoke-key-error').hidden=true;
+  if(revokeOpener?.isConnected)revokeOpener.focus({preventScroll:true});revokeOpener=null;
+});
+$('revoke-key-form').addEventListener('submit',async event=>{
+  event.preventDefault();if(!pendingRevoke||revokeInFlight)return;
+  const key=pendingRevoke;let revoked=false;revokeBusy(true);$('revoke-key-error').hidden=true;
+  try{
+    await api('keys/revoke',{id:key.id});revoked=true;revokeDialog.close();
+    await refresh();notice('Key revoked. It will no longer load the widget on new page loads.');
+  }catch(error){
+    if(revoked)notice('Key revoked, but the list could not refresh. Reload the workspace to see the updated status.',true);
+    else{$('revoke-key-error').textContent=error.message;$('revoke-key-error').hidden=false;}
+  }finally{revokeBusy(false);}
+});
 $('price-form').addEventListener('submit',event=>{event.preventDefault();submitting(event.currentTarget,async()=>{await api('config',{amount:Math.round(Number($('price-amount').value)*100),days:Number($('price-days').value)});await refresh();notice('Website access pricing saved. Existing orders keep their original price.');});});
 function showPaymentDetails(order){
   const details=$('payment-details');details.replaceChildren();
@@ -84,7 +115,7 @@ let checkoutLoading;
 function loadCheckout(){if(window.Razorpay)return Promise.resolve();if(!checkoutLoading)checkoutLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://checkout.razorpay.com/v1/checkout.js';script.onload=resolve;script.onerror=()=>{checkoutLoading=null;script.remove();reject(Error('Razorpay checkout could not load. Check your connection and retry.'));};document.head.append(script);});return checkoutLoading;}
 async function verifyPayment(){if(!pendingPayment)return;try{const result=await api('payments/verify',pendingPayment);pendingPayment=null;$('verify-pending').hidden=true;await refresh();notice(result.mode==='live'?'Payment verified. Website access is active; generate your live key in API keys.':'Test payment verified. Live access remains inactive until a live payment is captured.');}catch(error){$('verify-pending').hidden=false;notice(error.message,true);}}
 $('retry-payment').addEventListener('click',verifyPayment);
-$('pay-button').addEventListener('click',async()=>{const button=$('pay-button');button.disabled=true;try{await loadCheckout();const result=await api('orders',{siteId:$('payment-site').value});const checkout=new window.Razorpay({key:result.keyId,order_id:result.order.id,amount:result.order.amount,currency:'INR',name:'A11yEase',description:`Website access · ${result.order.days} days`,prefill:accountEmail?{email:accountEmail}:{},theme:{color:'#2563eb'},handler:async response=>{pendingPayment=response;await verifyPayment();},modal:{ondismiss:()=>notice('Checkout closed. No access is activated until a payment is captured and verified.')}});checkout.on('payment.failed',()=>notice('Payment failed. You can retry checkout.',true));checkout.open();await refresh();}catch(error){notice(error.message,true);}finally{button.disabled=!data.billing.configured||!data.sites.length;}});
+$('pay-button').addEventListener('click',async()=>{const button=$('pay-button');button.disabled=true;try{await loadCheckout();const result=await api('orders',{siteId:$('payment-site').value});const checkout=new window.Razorpay({key:result.keyId,order_id:result.order.id,amount:result.order.amount,currency:'INR',name:'pluga11y',description:`Website access · ${result.order.days} days`,prefill:accountEmail?{email:accountEmail}:{},theme:{color:'#2563eb'},handler:async response=>{pendingPayment=response;await verifyPayment();},modal:{ondismiss:()=>notice('Checkout closed. No access is activated until a payment is captured and verified.')}});checkout.on('payment.failed',()=>notice('Payment failed. You can retry checkout.',true));checkout.open();await refresh();}catch(error){notice(error.message,true);}finally{button.disabled=!data.billing.configured||!data.sites.length;}});
 $('logout').addEventListener('click',async()=>{try{const response=await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':csrf}});if(!response.ok)throw Error('Logout failed. Retry.');location.replace('/login');}catch(error){notice(error.message,true);}});
 async function start(){try{const response=await fetch('/api/auth/session',{credentials:'same-origin',cache:'no-store'});if(!response.ok){location.replace('/login');return;}const account=await response.json();csrf=account.csrf;accountRole=account.role||'admin';accountEmail=account.email||'';accountUsername=account.email||account.username;document.body.dataset.accountRole=accountRole;document.querySelectorAll('[data-admin-only]').forEach(node=>node.hidden=accountRole!=='admin');$('account-name').replaceChildren(document.createTextNode(accountUsername),el('small',accountRole==='admin'?'Platform administrator':'Client workspace'));await refresh();updateSnippet();view(location.hash.slice(1)||'overview');}catch(error){notice('Workspace could not load. '+error.message,true);}}
 const resetReload=(()=>{
