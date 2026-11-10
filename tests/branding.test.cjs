@@ -69,7 +69,7 @@ test('cross-site branding preserves saved settings, existing events and preferen
     for(const link of root.querySelectorAll('.top .brand-link')){
       assert.match(link.getAttribute('aria-label'),/^pluga11y home/);
       assert.equal(link.target,'_blank');
-      assert.equal(link.href,'https://web.a11yease.tech/');
+      assert.equal(link.href,'https://pluga11y.com/');
     }
     let events=0;w.AccessEase.host.addEventListener('accessease:change',()=>events++);
     w.AccessEase.setSettings({align:'left'});await settle();

@@ -51,7 +51,7 @@ window.AccessEaseSimpleText = {
   'A sample website with pluga11y · Made for every kind of mind.': 'A demo website with pluga11y · For every learner.',
   'Back to top ↑': 'Go to the top ↑',
   'YOUR SPACE TO TRY THINGS': 'TRY THE SETTINGS HERE',
-  '50 ways to explore.': 'Try 50 settings.',
+  '60 ways to explore.': 'Try 60 settings.',
   'Make this page yours ↗': 'Try your settings ↗',
   'Find a setting to try →': 'Choose a setting →',
   'Use sample information. All form actions stay on this page.': 'Use made-up details in the forms. Form actions only affect this page.',

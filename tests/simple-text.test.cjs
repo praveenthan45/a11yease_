@@ -214,7 +214,7 @@ test('the current demo uses meaningful alternatives across every content section
     assert.ok(d.querySelector('#demo-form-root [aria-invalid="true"]'),'React form handlers still work');
     t.toggle();await settle();
     assert.equal(hero.textContent,original);
-    assert.equal(d.querySelector('.lab-hero h1 em').textContent,'50 ways to explore.');
+    assert.equal(d.querySelector('.lab-hero h1 em').textContent,'60 ways to explore.');
     assert.equal(d.querySelector('#reading p a'),inline);
     assert.deepEqual(t.errors,[]);
   }finally{t.close();}

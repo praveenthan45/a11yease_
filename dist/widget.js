@@ -19,7 +19,7 @@
   host.setAttribute('data-uaw-ignore','');
   host.setAttribute('data-a11ytb-host','');
   let teamExtension = null, requestFeatures = () => {};
-  const landingURL = 'https://web.a11yease.tech/';
+  const landingURL = 'https://pluga11y.com/';
   const assetBase = document.currentScript?.src || document.baseURI;
   const badgeURL = new URL('accessibility-badge.png?v=20261106-compact', assetBase).href;
   const wordmarkURL = new URL('pluga11y-wordmark.svg?v=20261106-clean', assetBase).href;
