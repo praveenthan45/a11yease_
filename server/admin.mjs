@@ -6,6 +6,7 @@ import { createReadStream } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { platform, enforceAdminOnlyAccounts } from './platform.mjs';
+import { servePublicAsset } from './staticAssets.mjs';
 
 const scrypt = promisify(scryptCallback);
 const root = path.resolve(fileURLToPath(new URL('../dist/', import.meta.url)));
@@ -59,6 +60,8 @@ async function serve(req,res,pathname) {
   let info;try {info=await stat(file);} catch {return json(res,404,{error:'Not found.'});}
   if(!info.isFile())return json(res,404,{error:'Not found.'});
   const type=mime[path.extname(file)]||'application/octet-stream';
+  const cacheable=path.extname(file)!=='.html'&&(publicFiles.has(pathname)||/^\/assets\/[a-zA-Z0-9_./-]+\.(woff2?|ttf)$/.test(pathname));
+  if(cacheable&&await servePublicAsset(req,res,{file,pathname,info,type}))return;
   if(path.extname(file)==='.html'&&pathname!=='/login.html'&&pathname!=='/admin.html') {
     const html=(await readFile(file,'utf8')).replace('</head>','<link rel="stylesheet" href="/admin-session.css"><link rel="stylesheet" href="/ui-theme.css"><script src="/admin-session.js" defer></script></head>');
     res.writeHead(200,{'Content-Type':type});return res.end(req.method==='HEAD'?undefined:html);

@@ -53,7 +53,7 @@ function render(){
 async function refresh(){data=await api('overview');render();updateTestWebsite();}
 async function submitting(form,operation){const button=form.querySelector('[type=submit]');button.disabled=true;try{await operation();}catch(error){notice(error.message,true);}finally{button.disabled=false;}}
 $('site-form').addEventListener('submit',event=>{event.preventDefault();submitting(event.currentTarget,async()=>{const result=await api('sites',{name:$('site-name').value,origin:$('site-origin').value});$('site-form').reset();await refresh();$('key-site').value=result.site.id;$('payment-site').value=result.site.id;notice('Website registered. Generate a live key without payment, or a localhost test key.');});});
-function snippet(key){return `<script src="${location.origin}/embed.js" data-key="${key}" defer></script>`;}
+function snippet(key){return `<script src="${location.origin}/embed.js" data-key="${key}" async></script>`;}
 function updateSnippet(){const key=$('embed-key').value.trim();$('embed-code').value=snippet(key||'YOUR_WEBSITE_KEY');updateTestWebsite();}
 function updateTestWebsite(){
   const key=$('embed-key').value.trim(),valid=/^ae_(live|test)_[a-f0-9]{64}$/.test(key);

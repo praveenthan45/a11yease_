@@ -47,7 +47,7 @@ The default page is an accessibility playground with a guide for all 45 settings
 - Navin: 11 visual, motion, page audit, announcement and form integration panels from `AssistAccess/src/accessibility/`. Its reset, preferences and profiles are replaced by the shared controls.
 - Shared: import/export and profiles in `integration/index.jsx`. Vite builds the React dependency and reused modules into `dist/team-features.js`.
 
-Copy `widget.js`, `team-features.js`, `accessibility-badge.png`, `pluga11y-wordmark.svg` and `OpenDyslexic-OFL.txt` from `dist` into the same assets folder. Load only `widget.js`; it loads the team bundle relative to its own URL:
+Copy `widget.js`, `team-features.js`, `accessibility-badge.png`, `pluga11y-icon.svg`, `pluga11y-wordmark.svg`, `OpenDyslexic-OFL.txt` and the complete `assets/` font subfolder from `dist` into the same widget folder, preserving the subfolder structure. Load only `widget.js`; it loads the team bundle relative to its own URL:
 
 ```html
 <script src="/assets/widget.js" defer></script>
@@ -173,7 +173,7 @@ The first command displays server logs; the second stops and removes this projec
 
 ## Integrating the widget
 
-For the unified build, copy the four assets listed above into the same website folder and add this before `</body>`:
+For the unified build, copy the files and font subfolder listed above into the same website folder and add this before `</body>`:
 
 ```html
 <script src="/assets/widget.js" defer></script>
@@ -216,3 +216,12 @@ The CC samples are local MP4 files in `dist/media`: a 16-second spoken video, a 
 The widget wordmark, sign-in page, dashboard and preview branding use the supplied pluga11y artwork. `dist/pluga11y-logo.jpeg` preserves the original image. The icon and wordmark SVGs embed that image with separate viewports, so their artwork stays faithful and can load on client websites. Include `pluga11y-wordmark.svg` and the optimized `accessibility-badge.png` beside `widget.js` when copying the widget assets; the company icon SVG is used by the software pages. Existing `window.AccessEase` APIs, saved preference keys, import formats and `X-AccessEase-Key` installation headers remain compatible.
 
 The floating launcher retains the standard blue accessibility icon in the optimized 256px `accessibility-badge.png`. Company logos use the supplied pluga11y artwork with transparent backgrounds. API-key revocation asks for confirmation; No or Escape cancels without sending a revoke request.
+
+
+## Hosted widget loading
+
+The API-key embed downloads the public widget script and launcher image while validating the website key. The widget executes only after successful validation, including on repeat visits; revoked or wrong-origin keys stay blocked. Newly generated snippets use an async embed, and existing defer snippets remain supported.
+
+The hosted build keeps its four OpenDyslexic fonts in dist/assets/, outside the settings bundle. They download only when Dyslexia Mode needs them. Deploy the entire dist folder, including assets/, alongside the updated Node server folder. Copying only the JavaScript files will omit these fonts. The standalone SDK still embeds fonts in its own portable build. The host website's CSP must allow the widget origin in font-src when using external fonts.
+
+The Node server compresses public JavaScript, CSS and SVG assets with Brotli or gzip. Stable asset URLs revalidate with ETags so updates appear without redownloading unchanged files; fingerprinted fonts use immutable caching. Authentication, private pages and website-key validation remain uncached. The browser may reuse the CORS preflight for ten minutes, but still validates the key on every page load. The default full settings UI loads after the host page load event, and launcher interaction or saved preferences can start it earlier.

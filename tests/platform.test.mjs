@@ -65,6 +65,7 @@ test('only the administrator manages live keys while origin and revocation remai
     const preflight = await request('/api/widget/validate', { method: 'OPTIONS', headers: { origin: 'https://client.example' } });
     assert.equal(preflight.status, 204);
     assert.equal(preflight.headers['Access-Control-Allow-Headers'], 'X-AccessEase-Key');
+    assert.equal(preflight.headers['Access-Control-Max-Age'],'600');
     const overview = await request('/api/platform/overview');
     assert.equal(overview.value.orders.length, 0);
     assert.ok(overview.value.keys.every(key => !('token' in key) && !('hash' in key)));

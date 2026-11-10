@@ -62,7 +62,7 @@ export async function platform(req,res,url,{current,sameOrigin,json,body}){
   if(route==='/api/widget/validate'&&req.method==='OPTIONS'){
     let canonical;try{canonical=origin(req.headers.origin);}catch{return json(res,403,{error:'Invalid origin.'});}
     if(!db.sites.some(site=>site.origin===canonical))return json(res,403,{error:'Website is not registered.'});
-    res.setHeader('Access-Control-Allow-Origin',canonical);res.setHeader('Vary','Origin');res.setHeader('Access-Control-Allow-Methods','GET, OPTIONS');res.setHeader('Access-Control-Allow-Headers','X-AccessEase-Key');res.writeHead(204);return res.end();
+    res.setHeader('Access-Control-Allow-Origin',canonical);res.setHeader('Vary','Origin');res.setHeader('Access-Control-Allow-Methods','GET, OPTIONS');res.setHeader('Access-Control-Allow-Headers','X-AccessEase-Key');res.setHeader('Access-Control-Max-Age','600');res.writeHead(204);return res.end();
   }
   if(!route.startsWith('/api/platform/'))return false;
   if(!current)return json(res,401,{error:'Sign in to continue.'});
