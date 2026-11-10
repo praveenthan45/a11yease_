@@ -52,6 +52,8 @@ export function createWidgetAppearance(base){
       '--ae-heading':heading,'--ae-on-buttons':readable('#FFFFFF',palette.buttons),
       '--ae-on-primary':readable('#FFFFFF',palette.primary),
       '--ae-header-bg':'#FFFFFF','--ae-header-text':'#000000',
+      // The panel header stays light, so its high-contrast wordmark uses black.
+      '--ae-wordmark-filter':THEMES[settings.theme]?'brightness(0)':'none',
     }))token(name,value);
     const filters=[];
     if(originalFilter&&originalFilter!=='none')filters.push(originalFilter);

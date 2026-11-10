@@ -28,6 +28,7 @@
   height: 1.35em;
   max-width: 100%;
   object-fit: contain;
+  filter: var(--ae-wordmark-filter, none);
   border-radius: 0;
   forced-color-adjust: none;
 }

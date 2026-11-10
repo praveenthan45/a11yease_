@@ -84,3 +84,43 @@ test('cross-site branding preserves saved settings, existing events and preferen
     assert.deepEqual(errors,[]);
   }finally{w.close();}
 });
+
+test('logo image lettering follows color modes and restores without changing image sources',async()=>{
+  const errors=[],console=new VirtualConsole();
+  console.on('jsdomError',error=>errors.push(error.message));
+  const dom=new JSDOM('<html lang="en"><body><header><a class="ae-wordmark" href="/"><img class="plug-wordmark" src="/pluga11y-wordmark.svg" alt="pluga11y" data-uaw-ignore></a></header><main><h1>Website title</h1><img id="photo" src="/photo.jpg"></main><footer><span class="ae-wordmark"><img class="plug-wordmark" src="/pluga11y-wordmark.svg" alt="pluga11y" data-uaw-ignore></span></footer></body></html>',{url:'https://client.example/',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console});
+  const w=dom.window,settle=()=>new Promise(resolve=>setTimeout(resolve,80));
+  w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+  w.HTMLElement.prototype.scrollIntoView=function(){};
+  w.document.elementFromPoint=()=>null;w.scrollBy=()=>{};w.scrollTo=()=>{};
+  Object.defineProperty(w.document,'currentScript',{value:{src:'https://assets.example/widget.js'}});
+  try{
+    for(const file of ['widget.js','team-features.js'])w.eval(fs.readFileSync(path.join(project,'dist',file),'utf8'));
+    for(let i=0;i<50&&!w.AccessEaseTeam;i++)await settle();
+    assert.ok(w.AccessEaseTeam);await settle();
+    const images=[...w.document.querySelectorAll('img'),w.AccessEase.root.querySelector('.plug-wordmark')];
+    const originalImages=images.map(image=>image.outerHTML);
+    const modeFilters=[
+      [{grayscale:true},'grayscale(1)','none'],
+      [{colorVisionMode:'monochrome'},'grayscale(1)','none'],
+      [{theme:'contrast'},'brightness(0) invert(1)','brightness(0)'],
+      [{theme:'dark'},'brightness(0) invert(1)','brightness(0)'],
+      [{theme:'contrast',grayscale:true},'brightness(0) invert(1)','brightness(0)'],
+    ];
+    for(const [visual,pageFilter,panelFilter] of modeFilters){
+      w.AccessEaseTeam.setSettings({visual});await settle();
+      for(const surface of w.document.querySelectorAll('header,footer')){
+        assert.equal(surface.style.getPropertyValue('--ae-wordmark-filter'),pageFilter);
+      }
+      assert.equal(w.AccessEase.host.style.getPropertyValue('--ae-wordmark-filter'),panelFilter);
+      assert.equal(w.document.querySelector('#photo').style.filter,'','ordinary photographs are not recolored by the wordmark rule');
+      assert.deepEqual(images.map(image=>image.outerHTML),originalImages,'logo sources, sizes and text remain intact');
+      w.AccessEaseTeam.setSettings({visual:{}});await settle();
+      for(const surface of w.document.querySelectorAll('header,footer')){
+        assert.equal(surface.style.getPropertyValue('--ae-wordmark-filter'),'');
+      }
+      assert.equal(w.AccessEase.host.style.getPropertyValue('--ae-wordmark-filter'),'none');
+    }
+    assert.deepEqual(errors,[]);
+  }finally{w.close();}
+});

@@ -90,6 +90,16 @@ export function createContentEngine({ root = document.body, host, nonce, styleRo
       });
     }
     let css = settings.dyslexiaFont ? scrollGuard : '';
+    // Image lettering needs its own color treatment while retaining its image markup.
+    if (settings.theme === 'dark' || settings.theme === 'contrast') {
+      for (const el of scopes.keys()) {
+        override(el, '--ae-wordmark-filter', 'brightness(0) invert(1)');
+      }
+    } else if (settings.grayscale || settings.colorVisionMode === 'monochrome') {
+      for (const el of scopes.keys()) {
+        override(el, '--ae-wordmark-filter', 'grayscale(1)');
+      }
+    }
     if (settings.colorVisionMode !== 'default') {
       applyColorVision([...new Set([root, ...elements])], settings.colorVisionMode, override);
       for (const el of scopes.keys()) for (const [property, value] of Object.entries(colorModeVariables(settings.colorVisionMode))) override(el, property, value);
